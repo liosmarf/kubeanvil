@@ -10,6 +10,7 @@ import (
 	"github.com/liosmarf/kubeanvil/internal/catalog"
 	"github.com/liosmarf/kubeanvil/internal/config"
 	"github.com/liosmarf/kubeanvil/internal/generate"
+	"github.com/liosmarf/kubeanvil/internal/wizard"
 )
 
 // version is set at build time: -ldflags "-X main.version=v0.1.0"
@@ -31,6 +32,39 @@ func rootCmd() *cobra.Command {
 		SilenceErrors: false,
 	}
 	root.PersistentFlags().StringVarP(&file, "file", "f", "cluster.yaml", "cluster definition")
+
+	var accessible bool
+	initCmd := &cobra.Command{
+		Use:   "init",
+		Short: "Answer a few questions and write cluster.yaml",
+		Long: "Asks about the hypervisor, network, node sizes, domain and platform components, then\n" +
+			"writes cluster.yaml. Re-running it starts from the current file.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cat, err := catalog.Load()
+			if err != nil {
+				return err
+			}
+			var existing *config.Cluster
+			if _, statErr := os.Stat(file); statErr == nil {
+				if existing, err = config.Load(file); err != nil {
+					return err
+				}
+			}
+			c, err := wizard.Run(existing, cat, wizard.Options{Accessible: accessible})
+			if err != nil {
+				return err
+			}
+			if err := c.Save(file); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "\nWrote %s. Next: kubeanvil generate\n", file)
+			return nil
+		},
+	}
+	initCmd.Flags().BoolVar(&accessible, "accessible", os.Getenv("KUBEANVIL_ACCESSIBLE") != "",
+		"plain line-by-line prompts (screen readers, simple terminals, scripted input)")
+	root.AddCommand(initCmd)
 
 	root.AddCommand(&cobra.Command{
 		Use:   "validate",

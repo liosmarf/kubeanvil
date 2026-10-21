@@ -6,6 +6,16 @@ Argo CD do the work.
 
 > **Early development.** Nothing has been deployed end to end yet — see [status](#status).
 
+## Try the CLI
+
+Requires Go 1.24+. Nothing is created: these commands only write files.
+
+```bash
+go run ./cmd/kubeanvil init      # questions → cluster.yaml (add --accessible for plain prompts)
+go run ./cmd/kubeanvil validate  # catches overlapping IPs, etcd quorum, unsupported choices…
+go run ./cmd/kubeanvil generate  # Terraform, Ansible and GitOps inputs under clusters/ and gitops/clusters/
+```
+
 ## How it works
 
 ```mermaid
@@ -38,7 +48,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/liosmarf/kubeanvil/v0.1.
 | [Component catalog](gitops/platform/catalog.yaml): 12 categories, the 2–3 most used options each, pinned versions | ✅ |
 | GitOps platform chart: one Argo CD Application per selected component ([`gitops/`](gitops/)) | ✅ every component renders and validates ([`scripts/check-gitops.sh`](scripts/check-gitops.sh)) |
 | `kubeanvil` CLI ([`cmd/`](cmd/), [`internal/`](internal/)): `validate`, `generate` | ✅ tested (`go test ./...`) |
-| `kubeanvil init` wizard: size presets, component choice, memory budget | 🚧 |
+| `kubeanvil init` wizard: size presets, component choice, memory budget | ✅ tested end to end in accessible mode |
 | `kubeanvil apply`: Terraform → Ansible → GitOps | 🚧 |
 | One-line installer with Proxmox discovery | 🚧 |
 | vSphere and Azure modules ([ADR 0003](docs/adr/0003-provider-node-contract.md)) | planned |
