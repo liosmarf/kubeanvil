@@ -10,6 +10,8 @@ helps you write.
 
 ## Quick start
 
+> 🚧 The installer and the `kubeanvil` CLI are being built; this is how they will work.
+
 On a Proxmox VE host shell (like the Proxmox Community Scripts):
 
 ```bash
