@@ -1,4 +1,4 @@
-# The `nodes` output is the provider-independent contract (ADR 0003): platformctl turns it into
+# The `nodes` output is the provider-independent contract (ADR 0003): kubeanvil turns it into
 # the Ansible inventory, so Ansible never needs to know which provider built the machines.
 
 output "nodes" {

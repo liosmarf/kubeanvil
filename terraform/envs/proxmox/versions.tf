@@ -8,6 +8,6 @@ terraform {
     }
   }
 
-  # No backend block: state is local by default. `platformctl generate` writes a
+  # No backend block: state is local by default. `kubeanvil generate` writes a
   # backend_override.tf (S3-compatible, with locking) when spec.backup.s3 is configured.
 }

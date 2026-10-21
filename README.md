@@ -1,4 +1,4 @@
-# k8s-platform-iac
+# kubeanvil
 
 **Production-style Kubernetes platform, from bare hypervisor to GitOps, in one repository.**
 Terraform builds the machines, Ansible installs a hardened HA Kubernetes, and Argo CD delivers
@@ -13,7 +13,7 @@ helps you write.
 On a Proxmox VE host shell (like the Proxmox Community Scripts):
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/<owner>/k8s-platform-iac/v1.0.0/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/<owner>/kubeanvil/v1.0.0/install.sh)"
 ```
 
 The installer discovers your Proxmox environment, offers to create a least-privilege API user
@@ -25,8 +25,8 @@ Download `install.sh`, review it, then run `bash install.sh`.
 
 ```mermaid
 flowchart LR
-    W["platformctl init<br/>(interactive wizard)"] --> C["cluster.yaml<br/>single source of truth"]
-    C --> G["platformctl generate"]
+    W["kubeanvil init<br/>(interactive wizard)"] --> C["cluster.yaml<br/>single source of truth"]
+    C --> G["kubeanvil generate"]
     G --> TF["Terraform<br/>VMs on Proxmox · vSphere · Azure"]
     G --> AN["Ansible<br/>hardened OS + HA K3s + Cilium"]
     G --> GO["GitOps values<br/>(cluster-specific)"]
@@ -35,11 +35,11 @@ flowchart LR
     AR --> P["Platform layer<br/>networking · security · observability · data · backup"]
 ```
 
-1. **`platformctl init`** asks about your provider, network, sizing, domain and components, and
+1. **`kubeanvil init`** asks about your provider, network, sizing, domain and components, and
    writes [`cluster.yaml`](examples/cluster.yaml). Re-running it pre-fills current values.
-2. **`platformctl generate`** renders Terraform variables, the Ansible inventory and the GitOps
+2. **`kubeanvil generate`** renders Terraform variables, the Ansible inventory and the GitOps
    cluster values from that one file ([ADR 0001](docs/adr/0001-single-cluster-config.md)).
-3. **`platformctl apply`** runs the phases in order. After the GitOps bootstrap, every change
+3. **`kubeanvil apply`** runs the phases in order. After the GitOps bootstrap, every change
    is a Git commit.
 
 ## Platform
@@ -70,7 +70,7 @@ flowchart LR
 ## Repository layout
 
 ```
-cli/            platformctl (Go)
+cli/            kubeanvil (Go)
 terraform/      provider modules + per-provider environments
 ansible/        roles: base, hardening, data_disk, k3s, cilium, argocd
 gitops/         Argo CD bootstrap, platform components, per-cluster values
@@ -81,11 +81,11 @@ examples/       a fully commented cluster.yaml
 ## Roadmap
 
 - [x] Design and ADRs
-- [ ] `cluster.yaml` schema and `platformctl validate`
+- [ ] `cluster.yaml` schema and `kubeanvil validate`
 - [x] Proxmox Terraform module and environment (validated with Terraform and OpenTofu)
 - [ ] Ansible roles (OS hardening, HA K3s, Cilium, Argo CD bootstrap)
 - [ ] GitOps platform layer (core components)
-- [ ] `platformctl init / generate / secrets / apply`
+- [ ] `kubeanvil init / generate / secrets / apply`
 - [ ] `install.sh`: Proxmox discovery, API user, bastion LXC
 - [ ] CI: formatting, validation, linting, policy and secret scanning
 - [ ] Identity (Keycloak), secrets (ESO + OpenBao), supply-chain scanning

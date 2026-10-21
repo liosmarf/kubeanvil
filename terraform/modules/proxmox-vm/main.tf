@@ -77,7 +77,7 @@ resource "proxmox_virtual_environment_vm" "this" {
   name        = var.name
   vm_id       = var.vm_id
   node_name   = var.node_name
-  description = "${var.cluster_name} Kubernetes ${var.role}. Managed by Terraform (k8s-platform-iac); do not edit by hand."
+  description = "${var.cluster_name} Kubernetes ${var.role}. Managed by Terraform (kubeanvil); do not edit by hand."
   tags        = sort(distinct(concat(["k8s", var.cluster_name, var.role], var.extra_tags)))
   on_boot     = true
   started     = true

@@ -1,4 +1,4 @@
-# ADR 0004 — `platformctl`, an interactive CLI written in Go
+# ADR 0004 — `kubeanvil`, an interactive CLI written in Go
 
 - Status: accepted
 - Date: 2026-10-21
@@ -12,7 +12,7 @@ guidance; CI wants neither prompts nor surprises.
 
 ## Decision
 
-Provide `platformctl`, a single static binary written in Go:
+Provide `kubeanvil`, a single static binary written in Go:
 
 | Command | Purpose |
 |---|---|

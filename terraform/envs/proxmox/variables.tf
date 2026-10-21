@@ -1,4 +1,4 @@
-# Non-secret inputs are rendered by `platformctl generate` into terraform.tfvars.json from
+# Non-secret inputs are rendered by `kubeanvil generate` into terraform.tfvars.json from
 # cluster.yaml. Secrets come from the environment (TF_VAR_*), never from files in Git.
 
 variable "cluster_name" {
@@ -52,7 +52,7 @@ variable "access" {
 }
 
 variable "nodes" {
-  description = "One entry per node, keyed by hostname (rendered by platformctl from spec.nodes)."
+  description = "One entry per node, keyed by hostname (rendered by kubeanvil from spec.nodes)."
   type = map(object({
     role          = string
     vm_id         = number

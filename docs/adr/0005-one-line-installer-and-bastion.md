@@ -14,7 +14,7 @@ Kubernetes platform, without compromising the hypervisor or hiding what runs.
 A single entry point, pinned to a release:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/<owner>/k8s-platform-iac/v1.0.0/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/<owner>/kubeanvil/v1.0.0/install.sh)"
 ```
 
 `install.sh` is small and readable. It detects where it runs:
@@ -25,9 +25,9 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/<owner>/k8s-platform-iac
   2. Offers, with explicit confirmation, to create a least-privilege `terraform@pve` user,
      role and API token.
   3. Offers to create a small **bastion LXC** (Debian) holding OpenTofu, Ansible, kubectl,
-     helm and `platformctl`. The hypervisor itself gets no extra packages.
-  4. Starts `platformctl init` inside the bastion.
-- **Anywhere else** (Linux/macOS workstation): downloads the `platformctl` release binary,
+     helm and `kubeanvil`. The hypervisor itself gets no extra packages.
+  4. Starts `kubeanvil init` inside the bastion.
+- **Anywhere else** (Linux/macOS workstation): downloads the `kubeanvil` release binary,
   verifies its SHA-256 checksum and starts the wizard, asking for what it cannot discover.
 
 The bastion keeps `cluster.yaml`, the Terraform state backend configuration, the age key

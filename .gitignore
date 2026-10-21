@@ -1,4 +1,4 @@
-# Generated per cluster by `platformctl generate` — never committed
+# Generated per cluster by `kubeanvil generate` — never committed
 /clusters/
 *.tfvars.json
 # Terraform / OpenTofu
@@ -16,7 +16,7 @@ secrets.yaml
 kubeconfig*
 # Go
 /cli/dist/
-/cli/platformctl
+/cli/kubeanvil
 # OS / editors
 .DS_Store
 .idea/

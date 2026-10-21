@@ -14,13 +14,13 @@ We also want an interactive setup assistant without coupling it to any one of th
 
 ## Decision
 
-Every cluster is described by a single, versioned `cluster.yaml` (`apiVersion: platformctl.io/v1alpha1`).
+Every cluster is described by a single, versioned `cluster.yaml` (`apiVersion: kubeanvil.io/v1alpha1`).
 
-- `platformctl init` asks questions and **only** writes `cluster.yaml`.
-- `platformctl generate` renders every downstream input from it: `terraform.tfvars.json`,
+- `kubeanvil init` asks questions and **only** writes `cluster.yaml`.
+- `kubeanvil generate` renders every downstream input from it: `terraform.tfvars.json`,
   the Ansible inventory and `group_vars`, and the cluster values consumed by GitOps.
 - Generated files are marked as such and are never edited by hand.
-- A JSON Schema validates the file in editors and in CI; `platformctl validate` adds the
+- A JSON Schema validates the file in editors and in CI; `kubeanvil validate` adds the
   semantic checks a schema cannot express (IPs inside the CIDR, VIP outside the node range, …).
 - Secrets live in a separate `secrets.sops.yaml`, encrypted with SOPS + age (ADR 0002).
 

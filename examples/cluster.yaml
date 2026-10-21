@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../cli/schema/cluster.schema.json
 #
-# Single source of truth for one cluster. `platformctl init` writes this file interactively;
-# `platformctl generate` renders Terraform, Ansible and GitOps inputs from it.
+# Single source of truth for one cluster. `kubeanvil init` writes this file interactively;
+# `kubeanvil generate` renders Terraform, Ansible and GitOps inputs from it.
 # Secrets never live here: they go to secrets.sops.yaml (encrypted with SOPS + age).
-apiVersion: platformctl.io/v1alpha1
+apiVersion: kubeanvil.io/v1alpha1
 kind: Cluster
 metadata:
   name: lab                     # DNS-safe; used for VM names (lab-cp-01) and resource tags
@@ -76,14 +76,14 @@ spec:
     acmeEmail: admin@example.com
 
   gitops:
-    repoUrl: https://github.com/your-user/k8s-platform-iac.git
+    repoUrl: https://github.com/your-user/kubeanvil.git
     revision: main
 
   backup:
     s3:
       endpoint: https://s3.example.lan
       region: us-east-1
-      bucket: k8s-platform-backups
+      bucket: kubeanvil-backups
 
   components:                   # the core platform is always on; these are optional
     rancher: false
