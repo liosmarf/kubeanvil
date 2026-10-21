@@ -82,7 +82,7 @@ examples/       a fully commented cluster.yaml
 
 - [x] Design and ADRs
 - [ ] `cluster.yaml` schema and `platformctl validate`
-- [ ] Proxmox Terraform module and environment
+- [x] Proxmox Terraform module and environment (validated with Terraform and OpenTofu)
 - [ ] Ansible roles (OS hardening, HA K3s, Cilium, Argo CD bootstrap)
 - [ ] GitOps platform layer (core components)
 - [ ] `platformctl init / generate / secrets / apply`
