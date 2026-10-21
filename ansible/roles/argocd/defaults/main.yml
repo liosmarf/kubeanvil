@@ -4,7 +4,9 @@ argocd_namespace: argocd
 # Rendered from cluster.yaml (spec.gitops).
 argocd_repo_url: ""
 argocd_repo_revision: main
-argocd_root_path: ""
+# The platform chart renders every component; this file holds the cluster-specific values.
+argocd_platform_path: gitops/platform
+argocd_cluster_values: ""  # e.g. gitops/clusters/lab/values.yaml
 
 # Only for private repositories, decrypted from secrets.sops.yaml at run time.
 # HTTPS: username + password (a read-only token). SSH: ssh_private_key + ssh_known_hosts.

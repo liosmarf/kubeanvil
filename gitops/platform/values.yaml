@@ -1,0 +1,29 @@
+# Per-cluster values come from gitops/clusters/<name>/values.yaml, rendered by
+# `kubeanvil generate`. These defaults only document the shape.
+cluster:
+  name: ""
+  apiVip: ""
+  controlPlaneIps: []
+  domain: ""                # apps are published as <app>.<domain>
+  loadBalancerRange: { start: "", stop: "" }
+  timezone: UTC
+  dns:
+    provider: none          # cloudflare | rfc2136 | none
+    zone: ""                # rfc2136 only
+    server: ""              # rfc2136 only
+  tls:
+    issuer: internal-ca     # letsencrypt | internal-ca
+    acmeEmail: ""
+  backup:
+    s3: {}                  # { endpoint, region, bucket } — empty disables Velero
+
+gitops:
+  repoUrl: ""
+  revision: main
+
+# Category id -> option id from catalog.yaml. Missing categories use the catalog default.
+components: {}
+
+argocd:
+  namespace: argocd
+  project: default

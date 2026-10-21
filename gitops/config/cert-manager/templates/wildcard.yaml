@@ -1,0 +1,14 @@
+{{- $c := .Values.cluster }}
+# Default certificate for every Ingress without its own secret (see Cilium's defaultSecretName).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard
+  namespace: kube-system
+spec:
+  secretName: wildcard-tls
+  dnsNames: ["*.{{ $c.domain }}", "{{ $c.domain }}"]
+  privateKey: { algorithm: ECDSA, size: 256, rotationPolicy: Always }
+  issuerRef:
+    kind: ClusterIssuer
+    name: {{ ternary "letsencrypt-production" "internal-ca" (eq $c.tls.issuer "letsencrypt") }}

@@ -1,0 +1,37 @@
+{{- $dns := .Values.cluster.dns }}
+provider:
+  name: {{ $dns.provider }}
+sources: [ingress, service]
+domainFilters: [{{ .Values.cluster.domain }}]
+# Creates and deletes, but only records carrying its ownership TXT record.
+policy: sync
+registry: txt
+txtOwnerId: {{ .Values.cluster.name }}
+txtPrefix: edns-
+interval: 1m
+{{- if eq $dns.provider "cloudflare" }}
+env:
+  - name: CF_API_TOKEN
+    valueFrom:
+      secretKeyRef: { name: cloudflare-api-token, key: api-token }
+{{- else if eq $dns.provider "rfc2136" }}
+extraArgs:
+  - --rfc2136-host={{ $dns.server }}
+  - --rfc2136-port=53
+  - --rfc2136-zone={{ $dns.zone }}
+  - --rfc2136-insecure # restrict updates by source IP on the DNS server
+  - --rfc2136-axfr
+  - --rfc2136-min-ttl=300s
+{{- end }}
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: { drop: [ALL] }
+podSecurityContext:
+  seccompProfile: { type: RuntimeDefault }
+resources:
+  requests: { cpu: 10m, memory: 32Mi }
+  limits: { memory: 128Mi }
+serviceMonitor:
+  enabled: true

@@ -1,0 +1,12 @@
+hostname: rancher.{{ .Values.cluster.domain }}
+replicas: 2
+antiAffinity: preferred
+ingress:
+  ingressClassName: cilium
+  pathType: Prefix # Cilium treats ImplementationSpecific as Exact; /dashboard would 404
+  tls:
+    source: secret # tls-rancher-ingress, issued by gitops/config/rancher
+privateCA: false
+resources:
+  requests: { cpu: 250m, memory: 768Mi }
+  limits: { memory: 2Gi }

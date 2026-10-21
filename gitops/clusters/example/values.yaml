@@ -1,0 +1,33 @@
+# Rendered by `kubeanvil generate` from examples/cluster.yaml. Do not edit by hand.
+cluster:
+  name: lab
+  apiVip: 192.168.50.90
+  controlPlaneIps: [192.168.50.91, 192.168.50.92, 192.168.50.93]
+  domain: k8s.example.com
+  loadBalancerRange: { start: 192.168.50.45, stop: 192.168.50.50 }
+  timezone: UTC
+  dns:
+    provider: cloudflare
+  tls:
+    issuer: letsencrypt
+    acmeEmail: admin@example.com
+  backup:
+    s3: { endpoint: "https://s3.example.lan", region: us-east-1, bucket: kubeanvil-backups }
+
+gitops:
+  repoUrl: https://github.com/liosmarf/kubeanvil.git
+  revision: main
+
+components:
+  cni: cilium
+  gateway: cilium
+  storage: longhorn
+  gitops: argocd
+  secrets: none
+  policy: kyverno
+  identity: none
+  metrics: kube-prometheus-stack
+  logs: loki
+  tracing: none
+  databases: cloudnative-pg
+  management-ui: none

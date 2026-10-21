@@ -1,0 +1,2 @@
+# Audit reports violations without blocking; switch to Deny once reports are clean.
+validationAction: Audit

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: cert-manager-config
+description: Cluster resources for cert-manager that its upstream chart does not ship.
+type: application
+version: 0.1.0

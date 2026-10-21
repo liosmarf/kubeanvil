@@ -1,0 +1,21 @@
+# Same names as the bootstrap manifests in ansible/roles/cilium, so Argo CD adopts them.
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: default
+spec:
+  blocks:
+    - start: {{ .Values.cluster.loadBalancerRange.start }}
+      stop: {{ .Values.cluster.loadBalancerRange.stop }}
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: default
+spec:
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: DoesNotExist
+  loadBalancerIPs: true
+  externalIPs: true

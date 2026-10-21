@@ -1,0 +1,18 @@
+crds:
+  enabled: true
+  keep: true # deleting the app must not delete every Certificate in the cluster
+replicaCount: 2
+podDisruptionBudget: { enabled: true, minAvailable: 1 }
+webhook:
+  replicaCount: 2
+  podDisruptionBudget: { enabled: true, minAvailable: 1 }
+# Split-horizon DNS often hides the public _acme-challenge records from the LAN.
+dns01RecursiveNameservers: "1.1.1.1:53,1.0.0.1:53"
+dns01RecursiveNameserversOnly: true
+resources:
+  requests: { cpu: 10m, memory: 64Mi }
+  limits: { memory: 256Mi }
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: true

@@ -15,4 +15,4 @@ cilium_lb_range_stop: 192.168.50.50
 
 argocd_repo_url: https://github.com/liosmarf/kubeanvil.git
 argocd_repo_revision: main
-argocd_root_path: gitops/clusters/lab
+argocd_cluster_values: gitops/clusters/example/values.yaml

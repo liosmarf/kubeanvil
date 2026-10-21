@@ -9,7 +9,7 @@ offering none forces our taste on everyone.
 
 ## Decision
 
-`catalog/components.yaml` lists, per category, the **two or three most widely used options**,
+`gitops/platform/catalog.yaml` lists, per category, the **two or three most widely used options**,
 each with a short summary, pros, cons, pinned chart and app versions, licence and approximate
 memory. One option per category is the default.
 

@@ -1,0 +1,44 @@
+{{- $s3 := .Values.cluster.backup.s3 }}
+initContainers:
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.14.4
+    volumeMounts:
+      - { mountPath: /target, name: plugins }
+credentials:
+  useSecret: true
+  existingSecret: velero-s3 # created at bootstrap from secrets.sops.yaml
+configuration:
+  backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: {{ $s3.bucket }}
+      prefix: velero
+      default: true
+      config:
+        region: {{ $s3.region | default "us-east-1" }}
+        s3ForcePathStyle: "true"
+        s3Url: {{ $s3.endpoint }}
+  volumeSnapshotLocation: []
+  defaultVolumesToFsBackup: true
+  uploaderType: kopia
+snapshotsEnabled: false
+deployNodeAgent: true
+nodeAgent:
+  podVolumePath: /var/lib/kubelet/pods
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 1Gi }
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { memory: 512Mi }
+schedules:
+  daily:
+    schedule: "0 2 * * *"
+    useOwnerReferencesInBackup: false
+    template:
+      ttl: 168h
+      excludedNamespaces: [velero, kube-system]
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true

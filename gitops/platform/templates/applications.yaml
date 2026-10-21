@@ -1,0 +1,12 @@
+{{- $catalog := .Files.Get "catalog.yaml" | fromYaml -}}
+{{- range $category := $catalog.categories }}
+{{- $choice := index $.Values.components $category.id | default $category.default -}}
+{{- $selected := dict -}}
+{{- range $category.options }}{{ if eq .id $choice }}{{ $selected = . }}{{ end }}{{ end -}}
+{{- if not $selected }}{{ fail (printf "components.%s: unknown option %q" $category.id $choice) }}{{ end -}}
+{{- if ne $selected.status "supported" }}{{ fail (printf "components.%s: %q is planned, not supported yet" $category.id $choice) }}{{ end -}}
+{{- if $selected.install }}{{ include "platform.component" (dict "root" $ "component" $selected) }}{{ end -}}
+{{- end }}
+{{- range $catalog.core }}
+{{- if include "platform.when" (dict "root" $ "when" .when) }}{{ include "platform.component" (dict "root" $ "component" .) }}{{ end -}}
+{{- end }}

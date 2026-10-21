@@ -1,0 +1,13 @@
+configuration:
+  period: 1h
+  concurrency: 1
+  startTime: "03:00"
+  endTime: "05:00"
+  timeZone: {{ .Values.cluster.timezone }}
+  drainTimeout: 10m
+  lockTtl: 30m
+tolerations:
+  - operator: Exists
+resources:
+  requests: { cpu: 10m, memory: 32Mi }
+  limits: { memory: 64Mi }

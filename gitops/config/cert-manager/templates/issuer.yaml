@@ -1,0 +1,56 @@
+{{- $c := .Values.cluster }}
+{{- if eq $c.tls.issuer "letsencrypt" }}
+{{- range $env, $server := dict "staging" "https://acme-staging-v02.api.letsencrypt.org/directory" "production" "https://acme-v02.api.letsencrypt.org/directory" }}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-{{ $env }}
+spec:
+  acme:
+    server: {{ $server }}
+    email: {{ required "cluster.tls.acmeEmail is required for Let's Encrypt" $c.tls.acmeEmail }}
+    privateKeySecretRef: { name: letsencrypt-{{ $env }}-account }
+    solvers:
+      - dns01:
+          {{- if eq $c.dns.provider "cloudflare" }}
+          cloudflare:
+            apiTokenSecretRef: { name: cloudflare-api-token, key: api-token }
+          {{- else if eq $c.dns.provider "rfc2136" }}
+          rfc2136:
+            nameserver: {{ $c.dns.server }}:53
+          {{- else }}
+          {{- fail "Let's Encrypt DNS-01 needs cluster.dns.provider cloudflare or rfc2136" }}
+          {{- end }}
+{{- end }}
+{{- else }}
+# Internal CA: a self-signed root that signs everything else. Distribute ca.crt to clients.
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: platform-root-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: {{ $c.name }} root CA
+  secretName: platform-root-ca
+  duration: 87600h # 10 years
+  privateKey: { algorithm: ECDSA, size: 256 }
+  issuerRef: { kind: ClusterIssuer, name: selfsigned }
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: internal-ca
+spec:
+  ca:
+    secretName: platform-root-ca
+{{- end }}

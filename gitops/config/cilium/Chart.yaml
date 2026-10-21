@@ -1,0 +1,5 @@
+apiVersion: v2
+name: cilium-config
+description: Cluster resources for cilium that its upstream chart does not ship.
+type: application
+version: 0.1.0

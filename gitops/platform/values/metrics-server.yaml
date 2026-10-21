@@ -1,0 +1,12 @@
+# Verify kubelet certificates against the cluster CA instead of --kubelet-insecure-tls.
+args:
+  - --kubelet-certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+replicas: 2
+podDisruptionBudget: { enabled: true, minAvailable: 1 }
+resources:
+  requests: { cpu: 20m, memory: 64Mi }
+  limits: { memory: 256Mi }
+metrics:
+  enabled: true
+serviceMonitor:
+  enabled: true

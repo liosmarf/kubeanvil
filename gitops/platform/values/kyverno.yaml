@@ -1,0 +1,17 @@
+admissionController:
+  replicas: 3
+  serviceMonitor: { enabled: true }
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 384Mi }
+backgroundController:
+  replicas: 2
+  serviceMonitor: { enabled: true }
+cleanupController:
+  replicas: 2
+  serviceMonitor: { enabled: true }
+reportsController:
+  replicas: 2
+  serviceMonitor: { enabled: true }
+config:
+  resourceFiltersExcludeNamespaces: [kube-system, kyverno]

@@ -1,0 +1,14 @@
+{{- $c := .Values.cluster }}
+# Rancher's chart expects its own TLS secret; issue it from the platform issuer.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-rancher-ingress
+  namespace: cattle-system
+spec:
+  secretName: tls-rancher-ingress
+  dnsNames: ["rancher.{{ $c.domain }}"]
+  privateKey: { algorithm: ECDSA, size: 256 }
+  issuerRef:
+    kind: ClusterIssuer
+    name: {{ ternary "letsencrypt-production" "internal-ca" (eq $c.tls.issuer "letsencrypt") }}

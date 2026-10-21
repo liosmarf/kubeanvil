@@ -33,6 +33,9 @@ categories:
           name: cilium
           version: 1.20.3
         appVersion: 1.20.3
+        install:
+          - { release: cilium, namespace: kube-system, wave: 1, prune: false }
+        config: cilium
 
       - id: calico
         name: Calico
@@ -53,16 +56,18 @@ categories:
           name: tigera-operator
           version: v3.33.0
         appVersion: v3.33.0
+        install:
+          - { release: calico, namespace: tigera-operator, wave: 1 }
 
   - id: gateway
-    title: Ingress
+    title: Ingress and Gateway API
     question: What should route HTTP traffic into the cluster?
     default: cilium
     options:
       - id: cilium
         name: Cilium Gateway API
         status: supported
-        summary: Gateway API implemented by Cilium's embedded Envoy; nothing extra to install.
+        summary: Ingress and Gateway API served by Cilium's embedded Envoy; nothing extra to install.
         pros:
           - No additional component when Cilium is the CNI
           - Standard Gateway API resources, portable to other implementations
@@ -92,6 +97,8 @@ categories:
           name: traefik
           version: 42.1.2
         appVersion: v3.7.16
+        install:
+          - { release: traefik, namespace: traefik, wave: 2 }
 
       - id: envoy-gateway
         name: Envoy Gateway
@@ -111,6 +118,8 @@ categories:
           name: gateway-helm
           version: 1.9.2
         appVersion: v1.9.2
+        install:
+          - { release: envoy-gateway, namespace: envoy-gateway-system, wave: 2 }
 
   - id: storage
     title: Persistent storage
@@ -135,6 +144,9 @@ categories:
           name: longhorn
           version: 1.13.0
         appVersion: v1.13.0
+        install:
+          - { release: longhorn, namespace: longhorn-system, wave: 1, privileged: true, prune: false }
+        config: longhorn
 
       - id: rook-ceph
         name: Rook-Ceph
@@ -154,6 +166,8 @@ categories:
           name: rook-ceph
           version: 1.21.0
         appVersion: v1.21.0
+        install:
+          - { release: rook-ceph, namespace: rook-ceph, wave: 1 }
 
       - id: openebs
         name: OpenEBS
@@ -172,6 +186,8 @@ categories:
           name: openebs
           version: 4.6.2
         appVersion: 4.6.2
+        install:
+          - { release: openebs, namespace: openebs, wave: 1 }
 
   - id: gitops
     title: GitOps
@@ -196,6 +212,8 @@ categories:
           name: argo-cd
           version: 10.10.5
         appVersion: v3.5.5
+        install:
+          - { release: argocd, namespace: argocd, wave: 2 }
 
       - id: flux
         name: Flux
@@ -215,15 +233,17 @@ categories:
           name: flux2
           version: 2.19.1
         appVersion: 2.9.5
+        install:
+          - { release: flux, namespace: flux-system, wave: 2 }
 
   - id: secrets
     title: Secret store
     question: Where should runtime secrets be stored? (synced by External Secrets Operator)
-    default: openbao
+    default: none
     options:
       - id: openbao
         name: OpenBao
-        status: supported
+        status: planned
         summary: Open-source fork of HashiCorp Vault, run in the cluster with Raft HA.
         pros:
           - Vault's API and workflow under an open-source licence
@@ -239,6 +259,8 @@ categories:
           name: openbao
           version: 0.30.4
         appVersion: v2.7.1
+        install:
+          - { release: openbao, namespace: openbao, wave: 2 }
 
       - id: vault
         name: HashiCorp Vault
@@ -257,6 +279,16 @@ categories:
           name: vault
           version: 0.34.1
         appVersion: 2.0.4
+        install:
+          - { release: vault, namespace: vault, wave: 2 }
+
+      - id: none
+        name: None
+        status: supported
+        summary: Bootstrap secrets only (SOPS); applications manage their own Secrets.
+        pros: [Nothing to run or unseal]
+        cons: [No central store, rotation or audit for application secrets]
+        memoryMiB: 0
 
   - id: policy
     title: Policy engine
@@ -281,6 +313,9 @@ categories:
           name: kyverno
           version: 3.9.2
         appVersion: v1.19.2
+        install:
+          - { release: kyverno, namespace: kyverno, wave: 1 }
+        config: kyverno
 
       - id: gatekeeper
         name: OPA Gatekeeper
@@ -299,15 +334,17 @@ categories:
           name: gatekeeper
           version: 3.23.1
         appVersion: v3.23.1
+        install:
+          - { release: gatekeeper, namespace: gatekeeper-system, wave: 1 }
 
   - id: identity
     title: Single sign-on
     question: Which identity provider should log users into the cluster and its tools?
-    default: keycloak
+    default: none
     options:
       - id: keycloak
         name: Keycloak
-        status: supported
+        status: planned
         summary: Full OIDC/SAML identity provider; federates LDAP, Active Directory and social logins.
         pros:
           - The enterprise standard for self-hosted SSO
@@ -323,6 +360,8 @@ categories:
           name: keycloakx
           version: 7.4.0
         appVersion: 26.8.1
+        install:
+          - { release: keycloak, namespace: keycloak, wave: 3 }
 
       - id: authentik
         name: authentik
@@ -341,6 +380,16 @@ categories:
           name: authentik
           version: 2026.8.5
         appVersion: 2026.8.5
+        install:
+          - { release: authentik, namespace: authentik, wave: 3 }
+
+      - id: none
+        name: None
+        status: supported
+        summary: Local admin accounts in each tool.
+        pros: [Nothing extra to run]
+        cons: [One password per tool; no central offboarding]
+        memoryMiB: 0
 
   - id: metrics
     title: Metrics and alerting
@@ -365,6 +414,8 @@ categories:
           name: kube-prometheus-stack
           version: 92.11.0
         appVersion: v0.94.1
+        install:
+          - { release: kube-prometheus-stack, namespace: monitoring, wave: 2, privileged: true }
 
       - id: victoria-metrics
         name: VictoriaMetrics
@@ -384,6 +435,8 @@ categories:
           name: victoria-metrics-k8s-stack
           version: 0.96.0
         appVersion: v1.154.0
+        install:
+          - { release: victoria-metrics, namespace: monitoring, wave: 2 }
 
   - id: logs
     title: Logs
@@ -408,6 +461,9 @@ categories:
           name: loki
           version: 7.3.0
         appVersion: 3.6.12
+        install:
+          - { release: loki, namespace: monitoring, wave: 3 }
+          - { release: alloy, namespace: monitoring, wave: 3, privileged: true, chart: { repo: "https://grafana.github.io/helm-charts", name: alloy, version: 1.14.0 } } # renovate: datasource=helm depName=alloy registryUrl=https://grafana.github.io/helm-charts
 
       - id: none
         name: None
@@ -439,6 +495,8 @@ categories:
           name: tempo
           version: 1.24.4
         appVersion: 2.9.0
+        install:
+          - { release: tempo, namespace: monitoring, wave: 3 }
 
       - id: none
         name: None
@@ -470,6 +528,8 @@ categories:
           name: cloudnative-pg
           version: 0.29.1
         appVersion: 1.30.1
+        install:
+          - { release: cloudnative-pg, namespace: cnpg-system, wave: 1, prune: false }
 
       - id: none
         name: None
@@ -501,6 +561,9 @@ categories:
           name: rancher
           version: 2.15.2
         appVersion: v2.15.2
+        install:
+          - { release: rancher, namespace: cattle-system, wave: 3, privileged: true }
+        config: rancher
 
       - id: none
         name: None
@@ -510,12 +573,32 @@ categories:
         cons: [No point-and-click cluster browser]
         memoryMiB: 0
 
-# Always installed; not a choice: certificates, DNS records, backups, node maintenance.
+# Always installed. `when` limits a component to clusters that configure what it needs.
 core:
-  - { name: cert-manager,           chart: jetstack/cert-manager,                 version: v1.21.2 } # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io
-  - { name: external-dns,           chart: external-dns/external-dns,             version: 1.23.0 }  # renovate: datasource=helm depName=external-dns registryUrl=https://kubernetes-sigs.github.io/external-dns/
-  - { name: external-secrets,       chart: external-secrets/external-secrets,     version: 2.13.0 }  # renovate: datasource=helm depName=external-secrets registryUrl=https://charts.external-secrets.io
-  - { name: velero,                 chart: vmware-tanzu/velero,                   version: 12.2.1 }  # renovate: datasource=helm depName=velero registryUrl=https://vmware-tanzu.github.io/helm-charts
-  - { name: trivy-operator,         chart: aqua/trivy-operator,                   version: 0.37.0 }  # renovate: datasource=helm depName=trivy-operator registryUrl=https://aquasecurity.github.io/helm-charts
-  - { name: metrics-server,         chart: metrics-server/metrics-server,         version: 3.14.0 }  # renovate: datasource=helm depName=metrics-server registryUrl=https://kubernetes-sigs.github.io/metrics-server/
-  - { name: kured,                  chart: kubereboot/kured,                      version: 6.1.0 }   # renovate: datasource=helm depName=kured registryUrl=https://kubereboot.github.io/charts
+  - id: gateway-api-crds
+    summary: Gateway API CRDs (standard channel), required by the Gateway implementation.
+    git: { repo: "https://github.com/kubernetes-sigs/gateway-api", path: config/crd/standard, revision: v1.6.3 } # renovate: datasource=github-tags depName=kubernetes-sigs/gateway-api
+    install: [{ release: gateway-api-crds, namespace: kube-system, wave: 0, prune: false }]
+  - id: cert-manager
+    summary: Issues and renews TLS certificates (ACME DNS-01 or an internal CA).
+    chart: { repo: "https://charts.jetstack.io", name: cert-manager, version: v1.21.2 } # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io
+    install: [{ release: cert-manager, namespace: cert-manager, wave: 1 }]
+    config: cert-manager
+  - id: metrics-server
+    summary: Resource metrics for kubectl top and autoscaling.
+    chart: { repo: "https://kubernetes-sigs.github.io/metrics-server/", name: metrics-server, version: 3.14.0 } # renovate: datasource=helm depName=metrics-server registryUrl=https://kubernetes-sigs.github.io/metrics-server/
+    install: [{ release: metrics-server, namespace: kube-system, wave: 1 }]
+  - id: external-dns
+    summary: Creates DNS records for Ingresses and LoadBalancer Services.
+    when: dns
+    chart: { repo: "https://kubernetes-sigs.github.io/external-dns/", name: external-dns, version: 1.23.0 } # renovate: datasource=helm depName=external-dns registryUrl=https://kubernetes-sigs.github.io/external-dns/
+    install: [{ release: external-dns, namespace: external-dns, wave: 2 }]
+  - id: velero
+    summary: Backs up Kubernetes objects and volume data to S3.
+    when: backup
+    chart: { repo: "https://vmware-tanzu.github.io/helm-charts", name: velero, version: 12.2.1 } # renovate: datasource=helm depName=velero registryUrl=https://vmware-tanzu.github.io/helm-charts
+    install: [{ release: velero, namespace: velero, wave: 2, privileged: true, prune: false }]
+  - id: kured
+    summary: Reboots nodes one at a time, with a drain, after security updates.
+    chart: { repo: "https://kubereboot.github.io/charts", name: kured, version: 6.1.0 } # renovate: datasource=helm depName=kured registryUrl=https://kubereboot.github.io/charts
+    install: [{ release: kured, namespace: kured, wave: 2, privileged: true }]

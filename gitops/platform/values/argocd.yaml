@@ -1,0 +1,34 @@
+global:
+  domain: argocd.{{ .Values.cluster.domain }}
+configs:
+  params:
+    server.insecure: true # TLS ends at the Ingress
+    # Compare server-side so API defaults and webhook mutations do not show as drift.
+    controller.diff.server.side: "true"
+  cm:
+    resource.exclusions: |
+      - apiGroups: ["cilium.io"]
+        kinds: ["CiliumIdentity", "CiliumEndpoint", "CiliumEndpointSlice", "CiliumNode"]
+        clusters: ["*"]
+redis-ha:
+  enabled: true
+controller:
+  replicas: 1
+  metrics: { enabled: true, serviceMonitor: { enabled: true } }
+server:
+  replicas: 2
+  metrics: { enabled: true, serviceMonitor: { enabled: true } }
+  ingress:
+    enabled: true
+    ingressClassName: cilium
+    # tls: true would make the chart expect its own secret; this uses the wildcard instead.
+    extraTls:
+      - hosts: [argocd.{{ .Values.cluster.domain }}]
+repoServer:
+  replicas: 2
+  metrics: { enabled: true, serviceMonitor: { enabled: true } }
+applicationSet:
+  replicas: 2
+  metrics: { enabled: true, serviceMonitor: { enabled: true } }
+dex:
+  enabled: false

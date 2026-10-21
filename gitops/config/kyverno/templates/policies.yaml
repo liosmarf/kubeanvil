@@ -1,0 +1,46 @@
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  validationActions: [{{ .Values.validationAction }}]
+  evaluation:
+    background: { enabled: true }
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  variables:
+    - name: images
+      expression: >-
+        object.spec.containers.map(c, c.image) +
+        object.spec.?initContainers.orValue([]).map(c, c.image)
+  validations:
+    - expression: >-
+        variables.images.all(i, !i.endsWith(':latest') &&
+        (i.contains('@') || i.split('/')[i.split('/').size() - 1].contains(':')))
+      message: Images must be pinned to a tag or digest, not latest.
+---
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-requests-limits
+spec:
+  validationActions: [{{ .Values.validationAction }}]
+  evaluation:
+    background: { enabled: true }
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  validations:
+    - expression: >-
+        object.spec.containers.all(c,
+        has(c.resources) && has(c.resources.requests) &&
+        'cpu' in c.resources.requests && 'memory' in c.resources.requests &&
+        has(c.resources.limits) && 'memory' in c.resources.limits)
+      message: Every container needs CPU and memory requests and a memory limit.
