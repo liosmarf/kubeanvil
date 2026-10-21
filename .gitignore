@@ -15,8 +15,8 @@ secrets.yaml
 !secrets.sops.yaml
 kubeconfig*
 # Go
-/cli/dist/
-/cli/kubeanvil
+/dist/
+/kubeanvil
 # OS / editors
 .DS_Store
 .idea/

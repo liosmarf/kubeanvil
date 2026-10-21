@@ -4,6 +4,7 @@ cluster:
   name: ""
   apiVip: ""
   controlPlaneIps: []
+  storageReplicas: 3        # copies of each Longhorn volume: min(3, workers)
   domain: ""                # apps are published as <app>.<domain>
   loadBalancerRange: { start: "", stop: "" }
   timezone: UTC

@@ -4,8 +4,7 @@ Build a highly available Kubernetes cluster on Proxmox VE and bootstrap it with 
 one configuration file. An interactive installer asks the questions; Terraform, Ansible and
 Argo CD do the work.
 
-> **Early development.** Working today: the Proxmox Terraform module. Everything else is in
-> progress — see [status](#status).
+> **Early development.** Nothing has been deployed end to end yet — see [status](#status).
 
 ## How it works
 
@@ -38,7 +37,9 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/liosmarf/kubeanvil/v0.1.
 | Ansible: OS hardening, HA K3s, Cilium, Argo CD bootstrap ([`ansible/`](ansible/)) | ✅ ported; passes ansible-lint (production) · 🚧 end-to-end run |
 | [Component catalog](gitops/platform/catalog.yaml): 12 categories, the 2–3 most used options each, pinned versions | ✅ |
 | GitOps platform chart: one Argo CD Application per selected component ([`gitops/`](gitops/)) | ✅ every component renders and validates ([`scripts/check-gitops.sh`](scripts/check-gitops.sh)) |
-| `kubeanvil` CLI: `init`, `validate`, `generate`, `apply` | 🚧 |
+| `kubeanvil` CLI ([`cmd/`](cmd/), [`internal/`](internal/)): `validate`, `generate` | ✅ tested (`go test ./...`) |
+| `kubeanvil init` wizard: size presets, component choice, memory budget | 🚧 |
+| `kubeanvil apply`: Terraform → Ansible → GitOps | 🚧 |
 | One-line installer with Proxmox discovery | 🚧 |
 | vSphere and Azure modules ([ADR 0003](docs/adr/0003-provider-node-contract.md)) | planned |
 

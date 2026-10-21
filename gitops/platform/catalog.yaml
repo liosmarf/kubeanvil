@@ -577,28 +577,34 @@ categories:
 core:
   - id: gateway-api-crds
     summary: Gateway API CRDs (standard channel), required by the Gateway implementation.
+    memoryMiB: 0
     git: { repo: "https://github.com/kubernetes-sigs/gateway-api", path: config/crd/standard, revision: v1.6.3 } # renovate: datasource=github-tags depName=kubernetes-sigs/gateway-api
     install: [{ release: gateway-api-crds, namespace: kube-system, wave: 0, prune: false }]
   - id: cert-manager
     summary: Issues and renews TLS certificates (ACME DNS-01 or an internal CA).
+    memoryMiB: 250
     chart: { repo: "https://charts.jetstack.io", name: cert-manager, version: v1.21.2 } # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io
     install: [{ release: cert-manager, namespace: cert-manager, wave: 1 }]
     config: cert-manager
   - id: metrics-server
     summary: Resource metrics for kubectl top and autoscaling.
+    memoryMiB: 100
     chart: { repo: "https://kubernetes-sigs.github.io/metrics-server/", name: metrics-server, version: 3.14.0 } # renovate: datasource=helm depName=metrics-server registryUrl=https://kubernetes-sigs.github.io/metrics-server/
     install: [{ release: metrics-server, namespace: kube-system, wave: 1 }]
   - id: external-dns
     summary: Creates DNS records for Ingresses and LoadBalancer Services.
+    memoryMiB: 50
     when: dns
     chart: { repo: "https://kubernetes-sigs.github.io/external-dns/", name: external-dns, version: 1.23.0 } # renovate: datasource=helm depName=external-dns registryUrl=https://kubernetes-sigs.github.io/external-dns/
     install: [{ release: external-dns, namespace: external-dns, wave: 2 }]
   - id: velero
     summary: Backs up Kubernetes objects and volume data to S3.
+    memoryMiB: 400
     when: backup
     chart: { repo: "https://vmware-tanzu.github.io/helm-charts", name: velero, version: 12.2.1 } # renovate: datasource=helm depName=velero registryUrl=https://vmware-tanzu.github.io/helm-charts
     install: [{ release: velero, namespace: velero, wave: 2, privileged: true, prune: false }]
   - id: kured
     summary: Reboots nodes one at a time, with a drain, after security updates.
+    memoryMiB: 50
     chart: { repo: "https://kubereboot.github.io/charts", name: kured, version: 6.1.0 } # renovate: datasource=helm depName=kured registryUrl=https://kubereboot.github.io/charts
     install: [{ release: kured, namespace: kured, wave: 2, privileged: true }]

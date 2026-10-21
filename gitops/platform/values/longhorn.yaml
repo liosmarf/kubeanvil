@@ -1,6 +1,6 @@
 defaultSettings:
   defaultDataPath: /var/lib/longhorn # the dedicated data disk, mounted by Ansible
-  defaultReplicaCount: 3
+  defaultReplicaCount: {{ .Values.cluster.storageReplicas }} # min(3, workers)
   storageMinimalAvailablePercentage: 15
   # The disk holds only Longhorn data, so the 30% default reservation is wasted space.
   storageReservedPercentageForDefaultDisk: 10
@@ -12,7 +12,7 @@ defaultSettings:
   nodeDrainPolicy: block-for-eviction-if-contains-last-replica
 persistence:
   defaultClass: true
-  defaultClassReplicaCount: 3
+  defaultClassReplicaCount: {{ .Values.cluster.storageReplicas }}
 preUpgradeChecker:
   jobEnabled: false # Argo CD sync would hang on the hook
 longhornUI:
