@@ -85,14 +85,14 @@ spec:
       region: us-east-1
       bucket: kubeanvil-backups
 
-  components:                   # one option per category from catalog/components.yaml
+  components:                   # one option per category from gitops/platform/catalog.yaml
     cni: cilium
     gateway: cilium
     storage: longhorn
     gitops: argocd
-    secrets: openbao
+    secrets: none
     policy: kyverno
-    identity: keycloak
+    identity: none
     metrics: kube-prometheus-stack
     logs: loki
     tracing: none
