@@ -4,8 +4,10 @@ argocd_namespace: argocd
 # Rendered from cluster.yaml (spec.gitops).
 argocd_repo_url: ""
 argocd_repo_revision: main
-# The platform chart renders every component; this file holds the cluster-specific values.
+# The platform chart renders every component. Its cluster-specific values travel inside the
+# root Application (ADR 0007); a fork that keeps them in Git sets argocd_cluster_values instead.
 argocd_platform_path: gitops/platform
+argocd_platform_values: {}
 argocd_cluster_values: ""  # e.g. gitops/clusters/lab/values.yaml
 
 # Only for private repositories, decrypted from secrets.sops.yaml at run time.

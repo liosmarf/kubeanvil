@@ -12,12 +12,12 @@ import (
 	"net/netip"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/liosmarf/kubeanvil/internal/config"
+	"github.com/liosmarf/kubeanvil/internal/sshkey"
 )
 
 // Proxmox discovery. Two read-only commands, over SSH or locally when kubeanvil runs on the
@@ -90,7 +90,7 @@ func (h *proxmoxHost) run(script string) ([]byte, error) {
 	cmd := exec.Command("sh", "-c", script)
 	if h.addr != "" {
 		args := []string{"-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "StrictHostKeyChecking=accept-new"}
-		for _, key := range privateKeys() {
+		for _, key := range sshkey.Private() {
 			args = append(args, "-i", key)
 		}
 		cmd = exec.Command("ssh", append(args, h.user+"@"+h.addr, script)...)
@@ -285,26 +285,4 @@ func trustedTLS(addr string) bool {
 		}
 	}
 	return false
-}
-
-// privateKeys returns the standard SSH private keys, so key files with custom names
-// (id_ed25519_homelab…) work without an ssh_config entry.
-func privateKeys() []string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil
-	}
-	pubs, _ := filepath.Glob(filepath.Join(home, ".ssh", "id_*.pub"))
-	var keys []string
-	for _, pub := range pubs {
-		if key := strings.TrimSuffix(pub, ".pub"); fileExists(key) {
-			keys = append(keys, key)
-		}
-	}
-	return keys
-}
-
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }

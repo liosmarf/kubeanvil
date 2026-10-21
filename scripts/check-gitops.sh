@@ -3,7 +3,7 @@
 # charts with their computed values, and the config charts), and validates all manifests
 # with kubeconform. Used locally and in CI.
 #
-# Usage: scripts/check-gitops.sh [gitops/clusters/<name>/values.yaml]
+# Usage: scripts/check-gitops.sh [clusters/<name>/platform-values.yaml]
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

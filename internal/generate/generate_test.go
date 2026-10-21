@@ -14,7 +14,8 @@ import (
 )
 
 // The hand-written files under examples/ and gitops/clusters/example/ document the output
-// format; generating from examples/cluster.yaml must reproduce them.
+// format; generating from examples/cluster.yaml must reproduce them, and the Ansible
+// variables must carry the same platform values to the root Application.
 func TestGenerateMatchesExamples(t *testing.T) {
 	c, err := config.Load("../../examples/cluster.yaml")
 	if err != nil {
@@ -28,7 +29,7 @@ func TestGenerateMatchesExamples(t *testing.T) {
 	if _, err := All(c, cat, dir); err != nil {
 		t.Fatal(err)
 	}
-	tfvars, _, gitops := Paths(c.Metadata.Name)
+	tfvars, inventory, gitops := Paths(c.Metadata.Name)
 
 	var got, want map[string]any
 	readJSON(t, filepath.Join(dir, tfvars), &got)
@@ -43,10 +44,24 @@ func TestGenerateMatchesExamples(t *testing.T) {
 		t.Errorf("terraform.tfvars.json differs from examples/terraform.tfvars.json")
 	}
 
+	got, want = nil, nil // decoding into a non-nil map would merge with the tfvars above
 	readYAML(t, filepath.Join(dir, gitops), &got)
 	readYAML(t, "../../gitops/clusters/example/values.yaml", &want)
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("GitOps values differ from gitops/clusters/example/values.yaml")
+	}
+	var vars struct {
+		Values map[string]any `yaml:"argocd_platform_values"`
+	}
+	data, err := os.ReadFile(filepath.Join(dir, inventory, "group_vars", "all.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.Unmarshal(data, &vars); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(vars.Values, want) {
+		t.Errorf("argocd_platform_values differs from gitops/clusters/example/values.yaml")
 	}
 }
 

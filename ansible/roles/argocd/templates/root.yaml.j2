@@ -1,6 +1,6 @@
 # {{ ansible_managed }}
 # The only Application created outside Git. It renders the platform chart with this
-# cluster's values, which in turn creates one Application per selected component.
+# cluster's values (inline, ADR 0007), which creates one Application per selected component.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -15,8 +15,13 @@ spec:
     targetRevision: {{ argocd_repo_revision }}
     path: {{ argocd_platform_path }}
     helm:
+{% if argocd_cluster_values %}
       valueFiles:
         - {{ argocd_cluster_values | relpath(argocd_platform_path) }}
+{% else %}
+      valuesObject:
+        {{ argocd_platform_values | to_nice_yaml(indent=2) | indent(8) }}
+{% endif %}
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ argocd_namespace }}

@@ -1,3 +1,18 @@
+# Fresh VMs answer SSH before cloud-init has finished installing packages and users.
+- name: Nodes ready
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: SSH answers
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+
+    - name: Cloud-init finished
+      ansible.builtin.command: cloud-init status --wait
+      register: os_cloud_init
+      changed_when: false
+      failed_when: os_cloud_init.rc not in [0, 2] # 2: finished with recoverable warnings
+
 - name: Operating system baseline and hardening
   hosts: all
   become: true

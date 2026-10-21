@@ -11,7 +11,6 @@ import (
 	"io"
 	"net/netip"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/liosmarf/kubeanvil/internal/catalog"
 	"github.com/liosmarf/kubeanvil/internal/config"
+	"github.com/liosmarf/kubeanvil/internal/sshkey"
 )
 
 // Options tune how the wizard runs.
@@ -82,7 +82,7 @@ func (w *wizard) quickStart() error {
 	}
 	c.Spec.DNS.BaseDomain = c.Metadata.Name + "." + c.Spec.Network.SearchDomain
 	if len(c.Spec.Access.SSHPublicKeys) == 0 {
-		if key := localPublicKey(); key != "" {
+		if key := sshkey.LocalPublic(); key != "" {
 			c.Spec.Access.SSHPublicKeys = []string{key}
 		}
 	}
@@ -433,7 +433,7 @@ func (w *wizard) editAccess() error {
 	s := &w.c.Spec
 	keys := strings.Join(s.Access.SSHPublicKeys, ", ")
 	if keys == "" {
-		keys = localPublicKey()
+		keys = sshkey.LocalPublic()
 	}
 	err := w.ask(
 		w.input("Admin user on the nodes", "Created on every node with sudo; root login is disabled.", &s.Access.AdminUser, nonEmpty),
@@ -813,24 +813,3 @@ func (e *eofReader) Read(p []byte) (int, error) {
 }
 
 func stdinClosed() bool { return stdin.eof }
-
-// localPublicKey offers the user's own SSH key as the default admin key: a standard
-// id_<type>.pub first, otherwise any other id_*.pub.
-func localPublicKey() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	candidates := []string{"id_ed25519.pub", "id_ecdsa.pub", "id_rsa.pub"}
-	if others, _ := filepath.Glob(filepath.Join(home, ".ssh", "id_*.pub")); others != nil {
-		for _, o := range others {
-			candidates = append(candidates, filepath.Base(o))
-		}
-	}
-	for _, name := range candidates {
-		if data, err := os.ReadFile(filepath.Join(home, ".ssh", name)); err == nil {
-			return strings.TrimSpace(string(data))
-		}
-	}
-	return ""
-}

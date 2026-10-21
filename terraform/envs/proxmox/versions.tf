@@ -8,6 +8,7 @@ terraform {
     }
   }
 
-  # No backend block: state is local by default. `kubeanvil generate` writes a
-  # backend_override.tf (S3-compatible, with locking) when spec.backup.s3 is configured.
+  # Local state; `kubeanvil apply` points it at clusters/<name>/terraform.tfstate at init
+  # time, so every cluster keeps its own state next to its other files.
+  backend "local" {}
 }

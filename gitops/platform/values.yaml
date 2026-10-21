@@ -1,5 +1,6 @@
-# Per-cluster values come from gitops/clusters/<name>/values.yaml, rendered by
-# `kubeanvil generate`. These defaults only document the shape.
+# Per-cluster values are rendered by `kubeanvil generate` and passed inline by the root
+# Application (ADR 0007); gitops/clusters/example/values.yaml shows a full set. These
+# defaults only document the shape.
 cluster:
   name: ""
   apiVip: ""
