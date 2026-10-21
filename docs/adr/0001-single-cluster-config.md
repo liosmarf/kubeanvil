@@ -1,33 +1,24 @@
-# ADR 0001 — One `cluster.yaml` as the source of truth
+# 0001 — One `cluster.yaml` per cluster
 
-- Status: accepted
-- Date: 2026-10-21
+**Status:** accepted · 2026-10-21
 
 ## Context
 
-A cluster is described by three toolchains: Terraform (machines), Ansible (operating system and
-Kubernetes) and Argo CD (everything inside the cluster). Each needs overlapping values — IP
-addresses, the API VIP, the base domain, node counts — and keeping them in sync by hand is the
-most common source of drift in infrastructure repositories.
-
-We also want an interactive setup assistant without coupling it to any one of those toolchains.
+Terraform, Ansible and Argo CD each need the same values: node IPs, the API VIP, the domain.
+Keeping three copies in sync by hand is how they drift apart.
 
 ## Decision
 
-Every cluster is described by a single, versioned `cluster.yaml` (`apiVersion: kubeanvil.io/v1alpha1`).
+A cluster is described by one versioned `cluster.yaml` (`apiVersion: kubeanvil.io/v1alpha1`).
+`kubeanvil init` writes it; `kubeanvil generate` renders the Terraform variables, the Ansible
+inventory and the GitOps values from it. Generated files are never edited by hand.
+A JSON Schema validates it in editors and CI; `kubeanvil validate` adds the checks a schema
+cannot express (IPs inside the subnet, VIP outside the node range).
 
-- `kubeanvil init` asks questions and **only** writes `cluster.yaml`.
-- `kubeanvil generate` renders every downstream input from it: `terraform.tfvars.json`,
-  the Ansible inventory and `group_vars`, and the cluster values consumed by GitOps.
-- Generated files are marked as such and are never edited by hand.
-- A JSON Schema validates the file in editors and in CI; `kubeanvil validate` adds the
-  semantic checks a schema cannot express (IPs inside the CIDR, VIP outside the node range, …).
-- Secrets live in a separate `secrets.sops.yaml`, encrypted with SOPS + age (ADR 0002).
+Secrets are kept out of it, in an encrypted `secrets.sops.yaml` ([0002](0002-secrets-eso-openbao-sops.md)).
 
 ## Consequences
 
-- One place to change a value; reproducible output for the same input.
-- The wizard is optional: CI and power users edit `cluster.yaml` directly.
-- Adding a provider means adding a `spec.provider.<type>` block and a Terraform module that
-  honours the common node contract (ADR 0003); Ansible and GitOps stay untouched.
-- The schema becomes a public API: breaking changes require a new `apiVersion`.
+- One place to change a value; the same file always produces the same result.
+- The wizard is optional: CI and experienced users edit the file directly.
+- The schema is a public interface; breaking changes need a new `apiVersion`.

@@ -1,33 +1,27 @@
-# ADR 0004 — `kubeanvil`, an interactive CLI written in Go
+# 0004 — The `kubeanvil` CLI, in Go
 
-- Status: accepted
-- Date: 2026-10-21
+**Status:** accepted · 2026-10-21
 
 ## Context
 
-Setting up a cluster from this repository requires answering ~40 questions (provider endpoint,
-network layout, sizing, domain, certificates, optional components) and then running Terraform,
-Ansible and the GitOps bootstrap in order. Experienced users want a file; first-time users want
-guidance; CI wants neither prompts nor surprises.
+A first cluster means ~40 decisions and three tools run in the right order. New users want
+guidance, experienced users want a file, CI wants no prompts.
 
 ## Decision
 
-Provide `kubeanvil`, a single static binary written in Go:
+A single Go binary:
 
-| Command | Purpose |
+| Command | Does |
 |---|---|
-| `init` | Interactive wizard ([charmbracelet/huh](https://github.com/charmbracelet/huh)); writes `cluster.yaml`, pre-filling answers from an existing file |
-| `validate` | Schema + semantic validation of `cluster.yaml` |
-| `generate` | Renders tfvars, Ansible inventory/vars and GitOps cluster values |
-| `secrets` | Prompts for secrets (hidden input) and writes `secrets.sops.yaml` encrypted with age |
-| `plan` / `apply` | Runs the phases in order: Terraform → Ansible → GitOps bootstrap |
+| `init` | Interactive wizard ([huh](https://github.com/charmbracelet/huh)); writes `cluster.yaml`, pre-filled from an existing one |
+| `validate` | Schema and semantic checks |
+| `generate` | Renders Terraform, Ansible and GitOps inputs |
+| `secrets` | Hidden prompts; writes `secrets.sops.yaml` |
+| `plan` / `apply` | Terraform → Ansible → GitOps bootstrap, in order |
 
-Go was chosen over Python or shell because it ships as one binary for macOS, Linux and Windows,
-matches the ecosystem (kubectl, helm, talosctl), and the Charm libraries give a polished terminal UI.
+Go because it ships as one static binary for Linux, macOS and Windows, like kubectl and helm.
 
 ## Consequences
 
-- No runtime dependencies for users besides Terraform/OpenTofu and Ansible.
-- Every wizard question maps to a documented field in `cluster.yaml`; `--non-interactive`
-  plus a file covers automation.
-- Releases are built for several platforms by CI (GoReleaser).
+Users need only Terraform or OpenTofu and Ansible besides the binary. Every question in the
+wizard maps to a documented field, so `--non-interactive` with a file covers automation.

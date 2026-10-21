@@ -76,7 +76,7 @@ spec:
     acmeEmail: admin@example.com
 
   gitops:
-    repoUrl: https://github.com/your-user/kubeanvil.git
+    repoUrl: https://github.com/liosmarf/kubeanvil.git
     revision: main
 
   backup:

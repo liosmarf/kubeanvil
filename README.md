@@ -1,97 +1,51 @@
 # kubeanvil
 
-**Production-style Kubernetes platform, from bare hypervisor to GitOps, in one repository.**
-Terraform builds the machines, Ansible installs a hardened HA Kubernetes, and Argo CD delivers
-an enterprise platform layer — all driven by a single `cluster.yaml` that an interactive CLI
-helps you write.
+Build a highly available Kubernetes cluster on Proxmox VE and bootstrap it with GitOps, from
+one configuration file. An interactive installer asks the questions; Terraform, Ansible and
+Argo CD do the work.
 
-> **Status: work in progress.** The design below is settled (see [ADRs](docs/adr/)); components
-> are being ported from a working homelab cluster one at a time. See the [roadmap](#roadmap).
-
-## Quick start
-
-> 🚧 The installer and the `kubeanvil` CLI are being built; this is how they will work.
-
-On a Proxmox VE host shell (like the Proxmox Community Scripts):
-
-```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/<owner>/kubeanvil/v1.0.0/install.sh)"
-```
-
-The installer discovers your Proxmox environment, offers to create a least-privilege API user
-and a small management container, then starts the interactive wizard
-([ADR 0005](docs/adr/0005-one-line-installer-and-bastion.md)). Prefer to read before running?
-Download `install.sh`, review it, then run `bash install.sh`.
+> **Early development.** Working today: the Proxmox Terraform module. Everything else is in
+> progress — see [status](#status).
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    W["kubeanvil init<br/>(interactive wizard)"] --> C["cluster.yaml<br/>single source of truth"]
-    C --> G["kubeanvil generate"]
-    G --> TF["Terraform<br/>VMs on Proxmox · vSphere · Azure"]
-    G --> AN["Ansible<br/>hardened OS + HA K3s + Cilium"]
-    G --> GO["GitOps values<br/>(cluster-specific)"]
-    TF --> AN --> AR["Argo CD bootstrap"]
-    GO --> AR
-    AR --> P["Platform layer<br/>networking · security · observability · data · backup"]
+    I["kubeanvil init<br/>(interactive)"] --> C[cluster.yaml]
+    C --> T["Terraform<br/>VMs"]
+    C --> A["Ansible<br/>OS + K3s + Cilium"]
+    C --> G["Argo CD<br/>platform components"]
+    T --> A --> G
 ```
 
-1. **`kubeanvil init`** asks about your provider, network, sizing, domain and components, and
-   writes [`cluster.yaml`](examples/cluster.yaml). Re-running it pre-fills current values.
-2. **`kubeanvil generate`** renders Terraform variables, the Ansible inventory and the GitOps
-   cluster values from that one file ([ADR 0001](docs/adr/0001-single-cluster-config.md)).
-3. **`kubeanvil apply`** runs the phases in order. After the GitOps bootstrap, every change
-   is a Git commit.
+`cluster.yaml` is the only file you edit (or let the wizard write). Everything else is
+generated from it, so Terraform, Ansible and Argo CD never disagree about an IP address or a
+domain. See [`examples/cluster.yaml`](examples/cluster.yaml) and
+[ADR 0001](docs/adr/0001-single-cluster-config.md).
 
-## Platform
+The planned entry point is a single command on the Proxmox host, in the spirit of the Proxmox
+VE Community Scripts ([ADR 0005](docs/adr/0005-one-line-installer-and-bastion.md)):
 
-| Layer | Components |
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/liosmarf/kubeanvil/v0.1.0/install.sh)"
+```
+
+## Status
+
+| Part | State |
 |---|---|
-| Infrastructure | Terraform/OpenTofu modules with a common node contract ([ADR 0003](docs/adr/0003-provider-node-contract.md)) |
-| Operating system | Ubuntu LTS, CIS-oriented hardening, auditd, unattended security updates |
-| Kubernetes | K3s, 3 control planes with embedded etcd, kube-vip API VIP, secrets encryption at rest, audit logging |
-| Networking | Cilium (eBPF, kube-proxy replacement), Gateway API, LB-IPAM, default-deny NetworkPolicies |
-| Ingress & TLS | cert-manager (ACME DNS-01 or internal CA), external-dns |
-| Identity | Keycloak SSO via OIDC for the Kubernetes API, Argo CD and Grafana |
-| Secrets | External Secrets Operator + OpenBao; SOPS + age for bootstrap ([ADR 0002](docs/adr/0002-secrets-eso-openbao-sops.md)) |
-| Policy & supply chain | Kyverno (enforce), Pod Security Admission, Trivy Operator, kube-bench |
-| Observability | Prometheus, Alertmanager, Grafana, Loki, Grafana Alloy (optional: OpenTelemetry + Tempo) |
-| Storage & data | Longhorn on dedicated disks, CloudNativePG operator with S3 backups |
-| Backup & DR | Velero, etcd snapshots to S3, a tested [rebuild runbook](docs/runbooks/) |
-| Operations | Argo CD (app-of-apps via ApplicationSet), Kured, system-upgrade-controller, Renovate |
+| Proxmox VM module and environment ([`terraform/`](terraform/)) | ✅ validated with Terraform and OpenTofu |
+| Ansible: OS hardening, HA K3s, Cilium, Argo CD bootstrap | 🚧 porting from a running cluster |
+| GitOps platform components, selectable from a [catalog](docs/adr/0006-component-catalog.md) | 🚧 |
+| `kubeanvil` CLI: `init`, `validate`, `generate`, `apply` | 🚧 |
+| One-line installer with Proxmox discovery | 🚧 |
+| vSphere and Azure modules ([ADR 0003](docs/adr/0003-provider-node-contract.md)) | planned |
 
-## Providers
+## Design decisions
 
-| Provider | Status |
-|---|---|
-| Proxmox VE | 🚧 in progress (ported from a working cluster) |
-| VMware vSphere | 📝 planned — same node contract |
-| Microsoft Azure | 📝 planned — same node contract, cloud LB and Key Vault |
-
-## Repository layout
-
-```
-cli/            kubeanvil (Go)
-terraform/      provider modules + per-provider environments
-ansible/        roles: base, hardening, data_disk, k3s, cilium, argocd
-gitops/         Argo CD bootstrap, platform components, per-cluster values
-docs/           architecture, ADRs, runbooks
-examples/       a fully commented cluster.yaml
-```
-
-## Roadmap
-
-- [x] Design and ADRs
-- [ ] `cluster.yaml` schema and `kubeanvil validate`
-- [x] Proxmox Terraform module and environment (validated with Terraform and OpenTofu)
-- [ ] Ansible roles (OS hardening, HA K3s, Cilium, Argo CD bootstrap)
-- [ ] GitOps platform layer (core components)
-- [ ] `kubeanvil init / generate / secrets / apply`
-- [ ] `install.sh`: Proxmox discovery, API user, bastion LXC
-- [ ] CI: formatting, validation, linting, policy and secret scanning
-- [ ] Identity (Keycloak), secrets (ESO + OpenBao), supply-chain scanning
-- [ ] vSphere and Azure modules
+The [ADRs](docs/adr/) record what was decided and why: a single config file, secrets with
+External Secrets + OpenBao (SOPS for bootstrap), a node contract shared by all providers, a Go
+CLI, the installer, and the component catalog.
 
 ## License
 
