@@ -26,9 +26,10 @@ send "\r"
 
 for {set i 0} {$i < 120} {incr i} {
   sleep 0.15
-  expect -timeout 0 timeout {}
-  send "\r"
   if {[file exists cluster.yaml]} { exit 0 }
+  expect -timeout 0 eof { break } timeout {}
+  if {[catch {send "\r"}]} { break }
 }
+if {[file exists cluster.yaml]} { exit 0 }
 puts stderr "wizard did not write cluster.yaml"
 exit 1
