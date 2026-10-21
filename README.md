@@ -36,7 +36,8 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/liosmarf/kubeanvil/v0.1.
 |---|---|
 | Proxmox VM module and environment ([`terraform/`](terraform/)) | ✅ validated with Terraform and OpenTofu |
 | Ansible: OS hardening, HA K3s, Cilium, Argo CD bootstrap | 🚧 porting from a running cluster |
-| GitOps platform components, selectable from a [catalog](docs/adr/0006-component-catalog.md) | 🚧 |
+| [Component catalog](catalog/components.yaml): 12 categories, the 2–3 most used options each, pinned versions | ✅ defined · 🚧 manifests |
+| GitOps platform components | 🚧 |
 | `kubeanvil` CLI: `init`, `validate`, `generate`, `apply` | 🚧 |
 | One-line installer with Proxmox discovery | 🚧 |
 | vSphere and Azure modules ([ADR 0003](docs/adr/0003-provider-node-contract.md)) | planned |

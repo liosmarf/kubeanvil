@@ -1,0 +1,521 @@
+# Component catalog (ADR 0006).
+#
+# Per category: the question the wizard asks, the default, and the two or three options most
+# teams actually choose between. `supported` options are the v0.1 scope, ported from a running
+# cluster; `planned` ones are listed so users can see the trade-off, but cannot be selected yet.
+#
+# Memory figures are rough steady-state totals for a 3-node cluster, to help size workers.
+# Chart versions are pinned; Renovate updates them through the `# renovate:` hints.
+
+categories:
+  - id: cni
+    title: Pod networking
+    question: Which CNI should connect the pods?
+    default: cilium
+    options:
+      - id: cilium
+        name: Cilium
+        status: supported
+        summary: eBPF networking, load balancing and network policy, replacing kube-proxy.
+        pros:
+          - Replaces kube-proxy, MetalLB and an ingress controller in one component
+          - Hubble shows every flow and every policy drop
+          - Gateway API built in
+        cons:
+          - More moving parts to understand than a plain overlay
+          - Needs a recent kernel (fine on current Ubuntu LTS)
+        license: Apache-2.0
+        cncf: graduated
+        memoryMiB: 900
+        chart:
+          # renovate: datasource=helm depName=cilium registryUrl=https://helm.cilium.io
+          repo: https://helm.cilium.io
+          name: cilium
+          version: 1.20.3
+        appVersion: 1.20.3
+
+      - id: calico
+        name: Calico
+        status: planned
+        summary: The most widely deployed CNI; BGP or overlay networking with strong policy.
+        pros:
+          - Very mature, huge install base, well understood by network teams
+          - BGP peering with physical routers
+        cons:
+          - LoadBalancer IPs and ingress need extra components
+          - Advanced observability is in the commercial edition
+        license: Apache-2.0
+        cncf: none
+        memoryMiB: 600
+        chart:
+          # renovate: datasource=helm depName=tigera-operator registryUrl=https://docs.tigera.io/calico/charts
+          repo: https://docs.tigera.io/calico/charts
+          name: tigera-operator
+          version: v3.33.0
+        appVersion: v3.33.0
+
+  - id: gateway
+    title: Ingress
+    question: What should route HTTP traffic into the cluster?
+    default: cilium
+    options:
+      - id: cilium
+        name: Cilium Gateway API
+        status: supported
+        summary: Gateway API implemented by Cilium's embedded Envoy; nothing extra to install.
+        pros:
+          - No additional component when Cilium is the CNI
+          - Standard Gateway API resources, portable to other implementations
+        cons:
+          - Requires Cilium as the CNI
+          - Fewer middleware features than a dedicated proxy
+        license: Apache-2.0
+        cncf: graduated
+        memoryMiB: 0
+        requires: [cni=cilium]
+
+      - id: traefik
+        name: Traefik
+        status: planned
+        summary: Popular, easy reverse proxy with Ingress, Gateway API and rich middleware.
+        pros:
+          - Simple configuration, good dashboard
+          - Middlewares for auth, rate limiting, redirects
+        cons:
+          - Separate component and LoadBalancer to run
+        license: MIT
+        cncf: none
+        memoryMiB: 150
+        chart:
+          # renovate: datasource=helm depName=traefik registryUrl=https://traefik.github.io/charts
+          repo: https://traefik.github.io/charts
+          name: traefik
+          version: 42.1.2
+        appVersion: v3.7.16
+
+      - id: envoy-gateway
+        name: Envoy Gateway
+        status: planned
+        summary: The Envoy project's own Gateway API implementation.
+        pros:
+          - Reference-grade Gateway API support
+          - Works with any CNI
+        cons:
+          - Younger project; fewer guides than Traefik
+        license: Apache-2.0
+        cncf: graduated
+        memoryMiB: 250
+        chart:
+          # renovate: datasource=docker depName=envoyproxy/gateway-helm
+          repo: oci://docker.io/envoyproxy
+          name: gateway-helm
+          version: 1.9.2
+        appVersion: v1.9.2
+
+  - id: storage
+    title: Persistent storage
+    question: Where should persistent volumes live?
+    default: longhorn
+    options:
+      - id: longhorn
+        name: Longhorn
+        status: supported
+        summary: Replicated block storage on each worker's data disk.
+        pros:
+          - Works on plain disks; no storage cluster to design
+          - Snapshots, S3 backups and a web UI built in
+        cons:
+          - Slower than local disks; three replicas use three times the space
+        license: Apache-2.0
+        cncf: incubating
+        memoryMiB: 1500
+        chart:
+          # renovate: datasource=helm depName=longhorn registryUrl=https://charts.longhorn.io
+          repo: https://charts.longhorn.io
+          name: longhorn
+          version: 1.13.0
+        appVersion: v1.13.0
+
+      - id: rook-ceph
+        name: Rook-Ceph
+        status: planned
+        summary: Ceph run by an operator; block, file and object storage.
+        pros:
+          - Proven at large scale; block, shared file and S3 from one system
+        cons:
+          - Needs several dedicated disks and a lot of memory
+          - Operating Ceph is a skill of its own
+        license: Apache-2.0
+        cncf: graduated
+        memoryMiB: 6000
+        chart:
+          # renovate: datasource=helm depName=rook-ceph registryUrl=https://charts.rook.io/release
+          repo: https://charts.rook.io/release
+          name: rook-ceph
+          version: 1.21.0
+        appVersion: v1.21.0
+
+      - id: openebs
+        name: OpenEBS
+        status: planned
+        summary: Local and replicated storage engines; LocalPV is the lightest option there is.
+        pros:
+          - LocalPV gives near-native disk speed for databases that replicate themselves
+        cons:
+          - Replicated engine is heavier than Longhorn; LocalPV has no replication
+        license: Apache-2.0
+        cncf: sandbox
+        memoryMiB: 300
+        chart:
+          # renovate: datasource=helm depName=openebs registryUrl=https://openebs.github.io/openebs
+          repo: https://openebs.github.io/openebs
+          name: openebs
+          version: 4.6.2
+        appVersion: 4.6.2
+
+  - id: gitops
+    title: GitOps
+    question: Which GitOps engine should keep the cluster in sync with Git?
+    default: argocd
+    options:
+      - id: argocd
+        name: Argo CD
+        status: supported
+        summary: Syncs the cluster from Git, with a web UI showing every application and its health.
+        pros:
+          - The UI makes drift and failures obvious
+          - ApplicationSets, sync waves, multi-cluster
+        cons:
+          - Heavier than Flux; its own RBAC and SSO to configure
+        license: Apache-2.0
+        cncf: graduated
+        memoryMiB: 1200
+        chart:
+          # renovate: datasource=helm depName=argo-cd registryUrl=https://argoproj.github.io/argo-helm
+          repo: https://argoproj.github.io/argo-helm
+          name: argo-cd
+          version: 10.10.5
+        appVersion: v3.5.5
+
+      - id: flux
+        name: Flux
+        status: planned
+        summary: A set of small controllers that apply Git to the cluster; no UI by default.
+        pros:
+          - Lightweight, composable, everything is a Kubernetes resource
+          - First-class SOPS decryption
+        cons:
+          - No built-in UI; troubleshooting is CLI-first
+        license: Apache-2.0
+        cncf: graduated
+        memoryMiB: 400
+        chart:
+          # renovate: datasource=helm depName=flux2 registryUrl=https://fluxcd-community.github.io/helm-charts
+          repo: https://fluxcd-community.github.io/helm-charts
+          name: flux2
+          version: 2.19.1
+        appVersion: 2.9.5
+
+  - id: secrets
+    title: Secret store
+    question: Where should runtime secrets be stored? (synced by External Secrets Operator)
+    default: openbao
+    options:
+      - id: openbao
+        name: OpenBao
+        status: supported
+        summary: Open-source fork of HashiCorp Vault, run in the cluster with Raft HA.
+        pros:
+          - Vault's API and workflow under an open-source licence
+          - Kubernetes auth, audit log, dynamic secrets
+        cons:
+          - Must be initialised, unsealed and backed up
+        license: MPL-2.0
+        cncf: none
+        memoryMiB: 400
+        chart:
+          # renovate: datasource=helm depName=openbao registryUrl=https://openbao.github.io/openbao-helm
+          repo: https://openbao.github.io/openbao-helm
+          name: openbao
+          version: 0.30.4
+        appVersion: v2.7.1
+
+      - id: vault
+        name: HashiCorp Vault
+        status: planned
+        summary: The industry-standard secret manager, if your organisation already runs it.
+        pros:
+          - Most widely deployed; enterprise support available
+        cons:
+          - Business Source License since 2023
+        license: BUSL-1.1
+        cncf: none
+        memoryMiB: 400
+        chart:
+          # renovate: datasource=helm depName=vault registryUrl=https://helm.releases.hashicorp.com
+          repo: https://helm.releases.hashicorp.com
+          name: vault
+          version: 0.34.1
+        appVersion: 2.0.4
+
+  - id: policy
+    title: Policy engine
+    question: Which engine should enforce cluster policies?
+    default: kyverno
+    options:
+      - id: kyverno
+        name: Kyverno
+        status: supported
+        summary: Policies written as Kubernetes resources (YAML or CEL); validates, mutates, generates.
+        pros:
+          - No new language to learn
+          - Can also generate resources (default NetworkPolicies, quotas)
+        cons:
+          - Admission webhook adds latency and is a dependency for every write
+        license: Apache-2.0
+        cncf: incubating
+        memoryMiB: 700
+        chart:
+          # renovate: datasource=helm depName=kyverno registryUrl=https://kyverno.github.io/kyverno/
+          repo: https://kyverno.github.io/kyverno/
+          name: kyverno
+          version: 3.9.2
+        appVersion: v1.19.2
+
+      - id: gatekeeper
+        name: OPA Gatekeeper
+        status: planned
+        summary: Open Policy Agent for Kubernetes; policies in Rego.
+        pros:
+          - Same policy language as OPA elsewhere (APIs, Terraform, CI)
+        cons:
+          - Rego has a learning curve
+        license: Apache-2.0
+        cncf: graduated
+        memoryMiB: 500
+        chart:
+          # renovate: datasource=helm depName=gatekeeper registryUrl=https://open-policy-agent.github.io/gatekeeper/charts
+          repo: https://open-policy-agent.github.io/gatekeeper/charts
+          name: gatekeeper
+          version: 3.23.1
+        appVersion: v3.23.1
+
+  - id: identity
+    title: Single sign-on
+    question: Which identity provider should log users into the cluster and its tools?
+    default: keycloak
+    options:
+      - id: keycloak
+        name: Keycloak
+        status: supported
+        summary: Full OIDC/SAML identity provider; federates LDAP, Active Directory and social logins.
+        pros:
+          - The enterprise standard for self-hosted SSO
+          - Fine-grained clients, roles and groups
+        cons:
+          - Java; the heaviest option, with a dense admin UI
+        license: Apache-2.0
+        cncf: incubating
+        memoryMiB: 1000
+        chart:
+          # renovate: datasource=helm depName=keycloakx registryUrl=https://codecentric.github.io/helm-charts
+          repo: https://codecentric.github.io/helm-charts
+          name: keycloakx
+          version: 7.4.0
+        appVersion: 26.8.1
+
+      - id: authentik
+        name: authentik
+        status: planned
+        summary: Modern identity provider with a friendly UI and built-in proxy for apps without SSO.
+        pros:
+          - Easier to set up; outposts protect apps that have no login of their own
+        cons:
+          - Smaller enterprise footprint than Keycloak
+        license: MIT
+        cncf: none
+        memoryMiB: 700
+        chart:
+          # renovate: datasource=helm depName=authentik registryUrl=https://charts.goauthentik.io
+          repo: https://charts.goauthentik.io
+          name: authentik
+          version: 2026.8.5
+        appVersion: 2026.8.5
+
+  - id: metrics
+    title: Metrics and alerting
+    question: Which monitoring stack?
+    default: kube-prometheus-stack
+    options:
+      - id: kube-prometheus-stack
+        name: Prometheus + Grafana
+        status: supported
+        summary: Prometheus Operator, Alertmanager, Grafana and the standard Kubernetes dashboards.
+        pros:
+          - The reference stack; every chart ships ServiceMonitors for it
+          - Alerting rules for Kubernetes included
+        cons:
+          - Prometheus memory grows with series; long retention needs extra storage
+        license: Apache-2.0
+        cncf: graduated
+        memoryMiB: 2500
+        chart:
+          # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
+          repo: https://prometheus-community.github.io/helm-charts
+          name: kube-prometheus-stack
+          version: 92.11.0
+        appVersion: v0.94.1
+
+      - id: victoria-metrics
+        name: VictoriaMetrics
+        status: planned
+        summary: Prometheus-compatible metrics with much lower memory and disk use.
+        pros:
+          - Reads the same ServiceMonitors and PromQL dashboards
+          - Several times less memory for the same data
+        cons:
+          - Less common in enterprises; some features are commercial
+        license: Apache-2.0
+        cncf: none
+        memoryMiB: 1000
+        chart:
+          # renovate: datasource=helm depName=victoria-metrics-k8s-stack registryUrl=https://victoriametrics.github.io/helm-charts
+          repo: https://victoriametrics.github.io/helm-charts
+          name: victoria-metrics-k8s-stack
+          version: 0.96.0
+        appVersion: v1.154.0
+
+  - id: logs
+    title: Logs
+    question: Collect and store container and node logs?
+    default: loki
+    options:
+      - id: loki
+        name: Loki + Alloy
+        status: supported
+        summary: Alloy ships logs from every node to Loki; queried from Grafana next to the metrics.
+        pros:
+          - Indexes labels, not text, so it is cheap to run
+          - Same Grafana for logs and metrics
+        cons:
+          - Full-text search is slower than Elasticsearch
+        license: AGPL-3.0
+        cncf: none
+        memoryMiB: 800
+        chart:
+          # renovate: datasource=helm depName=loki registryUrl=https://grafana.github.io/helm-charts
+          repo: https://grafana.github.io/helm-charts
+          name: loki
+          version: 7.3.0
+        appVersion: 3.6.12
+
+      - id: none
+        name: None
+        status: supported
+        summary: Keep logs on the nodes only (kubectl logs).
+        pros: [No extra memory]
+        cons: [Logs disappear with the pod; no search across the cluster]
+        memoryMiB: 0
+
+  - id: tracing
+    title: Tracing (optional)
+    question: Collect distributed traces with OpenTelemetry?
+    default: none
+    options:
+      - id: tempo
+        name: OpenTelemetry + Tempo
+        status: planned
+        summary: OpenTelemetry Collector receives traces; Tempo stores them; Grafana links them to logs.
+        pros:
+          - Completes metrics, logs and traces in one Grafana
+        cons:
+          - Only useful if your applications are instrumented
+        license: AGPL-3.0
+        cncf: none
+        memoryMiB: 700
+        chart:
+          # renovate: datasource=helm depName=tempo registryUrl=https://grafana.github.io/helm-charts
+          repo: https://grafana.github.io/helm-charts
+          name: tempo
+          version: 1.24.4
+        appVersion: 2.9.0
+
+      - id: none
+        name: None
+        status: supported
+        summary: No tracing.
+        pros: [No extra memory]
+        cons: [No request-level view across services]
+        memoryMiB: 0
+
+  - id: databases
+    title: PostgreSQL operator (optional)
+    question: Install an operator so applications can request highly available PostgreSQL?
+    default: cloudnative-pg
+    options:
+      - id: cloudnative-pg
+        name: CloudNativePG
+        status: supported
+        summary: Declarative PostgreSQL clusters with automatic failover and S3 backups.
+        pros:
+          - A 20-line manifest gives you replication, failover and point-in-time recovery
+        cons:
+          - PostgreSQL only
+        license: Apache-2.0
+        cncf: sandbox
+        memoryMiB: 200
+        chart:
+          # renovate: datasource=helm depName=cloudnative-pg registryUrl=https://cloudnative-pg.github.io/charts
+          repo: https://cloudnative-pg.github.io/charts
+          name: cloudnative-pg
+          version: 0.29.1
+        appVersion: 1.30.1
+
+      - id: none
+        name: None
+        status: supported
+        summary: No database operator.
+        pros: [No extra memory]
+        cons: [Applications bring their own databases]
+        memoryMiB: 0
+
+  - id: management-ui
+    title: Cluster UI (optional)
+    question: Install a web UI to browse and manage the cluster?
+    default: none
+    options:
+      - id: rancher
+        name: Rancher
+        status: supported
+        summary: Web console for workloads, logs, shells and RBAC; can manage several clusters.
+        pros:
+          - Friendly for people new to Kubernetes
+        cons:
+          - Heavy, and installs many controllers of its own
+        license: Apache-2.0
+        cncf: none
+        memoryMiB: 2000
+        chart:
+          # renovate: datasource=helm depName=rancher registryUrl=https://releases.rancher.com/server-charts/stable
+          repo: https://releases.rancher.com/server-charts/stable
+          name: rancher
+          version: 2.15.2
+        appVersion: v2.15.2
+
+      - id: none
+        name: None
+        status: supported
+        summary: Use kubectl, k9s, Argo CD and Grafana.
+        pros: [No extra memory]
+        cons: [No point-and-click cluster browser]
+        memoryMiB: 0
+
+# Always installed; not a choice: certificates, DNS records, backups, node maintenance.
+core:
+  - { name: cert-manager,           chart: jetstack/cert-manager,                 version: v1.21.2 } # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io
+  - { name: external-dns,           chart: external-dns/external-dns,             version: 1.23.0 }  # renovate: datasource=helm depName=external-dns registryUrl=https://kubernetes-sigs.github.io/external-dns/
+  - { name: external-secrets,       chart: external-secrets/external-secrets,     version: 2.13.0 }  # renovate: datasource=helm depName=external-secrets registryUrl=https://charts.external-secrets.io
+  - { name: velero,                 chart: vmware-tanzu/velero,                   version: 12.2.1 }  # renovate: datasource=helm depName=velero registryUrl=https://vmware-tanzu.github.io/helm-charts
+  - { name: trivy-operator,         chart: aqua/trivy-operator,                   version: 0.37.0 }  # renovate: datasource=helm depName=trivy-operator registryUrl=https://aquasecurity.github.io/helm-charts
+  - { name: metrics-server,         chart: metrics-server/metrics-server,         version: 3.14.0 }  # renovate: datasource=helm depName=metrics-server registryUrl=https://kubernetes-sigs.github.io/metrics-server/
+  - { name: kured,                  chart: kubereboot/kured,                      version: 6.1.0 }   # renovate: datasource=helm depName=kured registryUrl=https://kubereboot.github.io/charts

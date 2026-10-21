@@ -85,7 +85,16 @@ spec:
       region: us-east-1
       bucket: kubeanvil-backups
 
-  components:                   # the core platform is always on; these are optional
-    rancher: false
-    keda: false
-    tracing: false              # OpenTelemetry Collector + Tempo
+  components:                   # one option per category from catalog/components.yaml
+    cni: cilium
+    gateway: cilium
+    storage: longhorn
+    gitops: argocd
+    secrets: openbao
+    policy: kyverno
+    identity: keycloak
+    metrics: kube-prometheus-stack
+    logs: loki
+    tracing: none
+    databases: cloudnative-pg
+    management-ui: none
