@@ -22,7 +22,7 @@ func TestDefaultsAreValid(t *testing.T) {
 	}
 	for _, p := range presets {
 		c.Spec.Nodes.ControlPlane, c.Spec.Nodes.Workers = p.ControlPlane, p.Workers
-		layoutIPs(c)
+		layoutIPs(c, nil)
 		if err := config.Validate(c, cat); err != nil {
 			t.Errorf("preset %s is not valid:\n%v", p.ID, err)
 		}
@@ -32,7 +32,7 @@ func TestDefaultsAreValid(t *testing.T) {
 func TestLayoutFollowsTheSubnet(t *testing.T) {
 	c := newCluster()
 	setNetwork(c, "10.20.0.0/24")
-	layoutIPs(c)
+	layoutIPs(c, nil)
 	n := c.Spec.Network
 	got := []string{n.Gateway, n.APIVIP, n.LoadBalancerRange.Start, c.Spec.Nodes.ControlPlane.FirstIP, c.Spec.Nodes.Workers.FirstIP}
 	want := []string{"10.20.0.1", "10.20.0.90", "10.20.0.45", "10.20.0.91", "10.20.0.94"}

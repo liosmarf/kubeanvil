@@ -1,10 +1,11 @@
 #!/usr/bin/expect -f
-# Drives the visual `kubeanvil init` in a real pseudo-terminal with key presses: picks the
-# "Small HA" preset with the up arrow, accepts every other proposed value and writes the file.
-# Catches regressions that unit tests cannot, such as keys never reaching the form.
+# Drives the visual `kubeanvil init` in a real pseudo-terminal with key presses. The Proxmox
+# host cannot be reached, so it takes the manual path, accepts every proposed value, picks
+# "Small HA" with the up arrow and writes the file. Catches regressions that unit tests
+# cannot, such as keys never reaching the form.
 #
 # Usage: scripts/wizard-smoke.exp <kubeanvil binary>   (run in an empty directory)
-set timeout 6
+set timeout 10
 log_user 0
 set env(TERM) xterm-256color
 spawn [lindex $argv 0] init
@@ -16,20 +17,28 @@ expect_before {
   -re {\[6n}    { send "\033\[1;1R"; exp_continue }
 }
 
-expect "Starting size"
-send "\r"
-expect "Starting size"
+proc fail {msg} { puts stderr $msg; exit 1 }
+
+expect "Cluster name" { sleep 0.3; send "\r" } timeout { fail "no name question" }
+expect "Proxmox host" { sleep 0.3; send "pve.invalid\r" } timeout { fail "no host question" }
+expect "Could not read" { sleep 0.3; send "\033\[B"; sleep 0.2; send "\r" } timeout { fail "no connection error" }
+
+# Manual Proxmox and network questions: keep every proposal until the size question.
+for {set i 0} {$i < 30} {incr i} {
+  expect -timeout 1 "Cluster size" { break } timeout { send "\r" }
+}
 sleep 0.3
 send "\033\[A"
 sleep 0.2
 send "\r"
 
-for {set i 0} {$i < 120} {incr i} {
-  sleep 0.15
-  if {[file exists cluster.yaml]} { exit 0 }
+for {set i 0} {$i < 20} {incr i} {
+  sleep 0.3
+  if {[file exists cluster.yaml]} { break }
   expect -timeout 0 eof { break } timeout {}
   if {[catch {send "\r"}]} { break }
 }
-if {[file exists cluster.yaml]} { exit 0 }
-puts stderr "wizard did not write cluster.yaml"
-exit 1
+if {![file exists cluster.yaml]} { fail "wizard did not write cluster.yaml" }
+set f [open cluster.yaml]; set yaml [read $f]; close $f
+if {![regexp {workers:\s+count: 2} $yaml]} { fail "expected the Small HA preset (2 workers)" }
+exit 0
