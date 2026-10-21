@@ -1,0 +1,12 @@
+## Subset of CIS 4.1 audit rules. Managed by Ansible.
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/sudoers -p wa -k sudoers
+-w /etc/sudoers.d/ -p wa -k sudoers
+-w /etc/ssh/sshd_config -p wa -k sshd
+-w /etc/ssh/sshd_config.d/ -p wa -k sshd
+-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -k time-change
+-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules
+-w /usr/bin/sudo -p x -k privileged
+-w /etc/rancher/ -p wa -k k3s-config

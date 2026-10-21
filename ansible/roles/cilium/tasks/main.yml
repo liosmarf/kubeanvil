@@ -1,0 +1,43 @@
+# Bootstrap only. Once Argo CD owns the "cilium" Application this role does nothing.
+- name: Cilium already managed by GitOps
+  ansible.builtin.command: k3s kubectl -n argocd get application cilium --ignore-not-found -o name
+  register: cilium_gitops_app
+  check_mode: false
+  changed_when: false
+  failed_when: false
+
+- name: Bootstrap Cilium
+  when: cilium_gitops_app.stdout | default('') == ''
+  block:
+    - name: Cilium HelmChart in the K3s auto-deploy directory
+      ansible.builtin.template:
+        src: cilium.yaml.j2
+        dest: /var/lib/rancher/k3s/server/manifests/cilium.yaml
+        mode: "0600"
+
+    - name: Cilium agent ready on every node
+      ansible.builtin.command: k3s kubectl -n kube-system rollout status daemonset/cilium --timeout=60s
+      register: cilium_rollout
+      until: cilium_rollout.rc == 0
+      retries: 15
+      delay: 10
+      changed_when: false
+      when: not ansible_check_mode
+
+    - name: LB-IPAM and L2 CRDs established
+      ansible.builtin.command: >-
+        k3s kubectl wait --for=condition=Established --timeout=120s
+        crd/ciliumloadbalancerippools.cilium.io crd/ciliuml2announcementpolicies.cilium.io
+      changed_when: false
+      when: not ansible_check_mode
+
+    - name: LoadBalancer IP pool and L2 announcement policy
+      ansible.builtin.template:
+        src: cilium-lb.yaml.j2
+        dest: /var/lib/rancher/k3s/server/manifests/cilium-lb.yaml
+        mode: "0600"
+
+    - name: All nodes Ready
+      ansible.builtin.command: k3s kubectl wait --for=condition=Ready nodes --all --timeout=300s
+      changed_when: false
+      when: not ansible_check_mode

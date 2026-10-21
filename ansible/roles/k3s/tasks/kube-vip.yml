@@ -1,0 +1,30 @@
+# K3s applies anything in server/manifests. kube-vip runs on the control planes with host
+# networking; the Lease holder answers ARP for the VIP and another takes over in seconds.
+- name: Auto-deploy directory
+  ansible.builtin.file:
+    path: /var/lib/rancher/k3s/server/manifests
+    state: directory
+    mode: "0700"
+
+- name: RBAC for kube-vip
+  ansible.builtin.copy:
+    src: kube-vip-rbac.yaml
+    dest: /var/lib/rancher/k3s/server/manifests/kube-vip-rbac.yaml
+    mode: "0600"
+
+- name: DaemonSet for kube-vip
+  ansible.builtin.template:
+    src: kube-vip.yaml.j2
+    dest: /var/lib/rancher/k3s/server/manifests/kube-vip.yaml
+    mode: "0600"
+
+- name: API reachable through the VIP
+  ansible.builtin.uri:
+    url: "https://{{ k3s_api_vip }}:6443/readyz"
+    validate_certs: false
+    status_code: [200, 401]
+  register: k3s_vip
+  until: k3s_vip.status in [200, 401]
+  retries: 30
+  delay: 5
+  when: not ansible_check_mode

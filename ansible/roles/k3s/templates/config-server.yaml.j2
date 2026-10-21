@@ -1,0 +1,62 @@
+# {{ ansible_managed }}
+# https://docs.k3s.io/cli/server
+{% if inventory_hostname == k3s_bootstrap_server %}
+cluster-init: true
+{% else %}
+# Join through the first server: the VIP may not exist yet during bootstrap.
+server: https://{{ hostvars[k3s_bootstrap_server].ansible_host }}:6443
+{% endif %}
+{% if inventory_hostname != k3s_bootstrap_server and k3s_token.content is defined %}
+token: "{{ k3s_token.content | b64decode | trim }}"
+{% endif %}
+node-ip: {{ ansible_host }}
+tls-san:
+  - {{ k3s_api_vip }}
+  - {{ ansible_host }}
+cluster-cidr: {{ k3s_cluster_cidr }}
+service-cidr: {{ k3s_service_cidr }}
+
+# Cilium replaces flannel, kube-proxy and network policies; the rest comes from GitOps.
+flannel-backend: none
+disable-network-policy: true
+disable-kube-proxy: true
+disable: [traefik, servicelb, local-storage, metrics-server]
+{% if k3s_taint_control_plane %}
+node-taint:
+  - CriticalAddonsOnly=true:NoExecute
+{% endif %}
+
+# K3s CIS hardening guide
+secrets-encryption: true
+protect-kernel-defaults: true
+kube-apiserver-arg:
+  - admission-control-config-file=/etc/rancher/k3s/psa-config.yaml
+  - audit-policy-file=/etc/rancher/k3s/audit-policy.yaml
+  - audit-log-path=/var/lib/rancher/k3s/server/logs/audit.log
+  - audit-log-maxage={{ k3s_audit_log_maxage }}
+  - audit-log-maxbackup={{ k3s_audit_log_maxbackup }}
+  - audit-log-maxsize={{ k3s_audit_log_maxsize }}
+# Expose controller-manager and scheduler metrics; both still require authentication.
+kube-controller-manager-arg:
+  - terminated-pod-gc-threshold=10
+  - bind-address=0.0.0.0
+kube-scheduler-arg:
+  - bind-address=0.0.0.0
+kubelet-arg:
+  - streaming-connection-idle-timeout=5m
+etcd-expose-metrics: true
+
+etcd-snapshot-schedule-cron: "{{ k3s_etcd_snapshot_cron }}"
+etcd-snapshot-retention: {{ k3s_etcd_snapshot_retention }}
+{% if k3s_etcd_s3 | length > 0 %}
+etcd-s3: true
+etcd-s3-endpoint: {{ k3s_etcd_s3.endpoint | regex_replace('^https?://', '') }}
+etcd-s3-insecure: {{ k3s_etcd_s3.endpoint is match('^http://') }}
+etcd-s3-bucket: {{ k3s_etcd_s3.bucket }}
+etcd-s3-region: {{ k3s_etcd_s3.region | default('us-east-1') }}
+etcd-s3-folder: {{ k3s_etcd_s3.folder | default('etcd') }}
+etcd-s3-access-key: "{{ k3s_etcd_s3.access_key }}"
+etcd-s3-secret-key: "{{ k3s_etcd_s3.secret_key }}"
+{% endif %}
+
+write-kubeconfig-mode: "0600"

@@ -1,0 +1,21 @@
+- name: Node role facts
+  ansible.builtin.set_fact:
+    k3s_role: "{{ 'server' if inventory_hostname in groups['control_plane'] else 'agent' }}"
+    k3s_service: "{{ 'k3s' if inventory_hostname in groups['control_plane'] else 'k3s-agent' }}"
+
+- name: Binary and shared configuration
+  ansible.builtin.import_tasks: install.yml
+
+- name: Cluster token
+  ansible.builtin.import_tasks: token.yml
+
+- name: Control plane
+  ansible.builtin.include_tasks: server.yml
+  when: k3s_role == 'server'
+
+- name: Worker
+  ansible.builtin.include_tasks: agent.yml
+  when: k3s_role == 'agent'
+
+- name: Failure-zone label
+  ansible.builtin.import_tasks: labels.yml

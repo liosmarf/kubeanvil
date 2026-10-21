@@ -1,0 +1,28 @@
+- name: Data disk present
+  ansible.builtin.stat:
+    path: "{{ data_disk_device }}"
+  register: data_disk_dev
+  failed_when: not data_disk_dev.stat.exists
+
+- name: Filesystem (never reformats an existing one)
+  community.general.filesystem:
+    dev: "{{ data_disk_device }}"
+    fstype: "{{ data_disk_fstype }}"
+    force: false
+    opts: -L longhorn -m 0
+
+- name: Filesystem UUID
+  ansible.builtin.command: blkid -s UUID -o value {{ data_disk_device }}
+  register: data_disk_uuid
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: Mounted by UUID
+  ansible.posix.mount:
+    path: "{{ data_disk_mountpoint }}"
+    src: "UUID={{ data_disk_uuid.stdout }}"
+    fstype: "{{ data_disk_fstype }}"
+    opts: defaults,noatime,nofail # boot even if the disk is missing
+    state: mounted
+  when: data_disk_uuid.stdout | length > 0

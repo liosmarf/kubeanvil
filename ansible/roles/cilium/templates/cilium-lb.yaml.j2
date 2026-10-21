@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+apiVersion: cilium.io/v2
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: default
+spec:
+  blocks:
+    - start: {{ cilium_lb_range_start }}
+      stop: {{ cilium_lb_range_stop }}
+---
+# Workers answer ARP for LoadBalancer IPs; with no workers, every node does.
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: default
+spec:
+{% if groups['workers'] | length > 0 %}
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: DoesNotExist
+{% endif %}
+  interfaces:
+    - ^{{ cilium_l2_interface }}$
+  loadBalancerIPs: true
+  externalIPs: true

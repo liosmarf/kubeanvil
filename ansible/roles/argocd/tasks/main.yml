@@ -1,0 +1,60 @@
+- name: Argo CD already manages itself
+  ansible.builtin.command: k3s kubectl -n {{ argocd_namespace }} get application argocd --ignore-not-found -o name
+  register: argocd_self_app
+  check_mode: false
+  changed_when: false
+  failed_when: false # the Application CRD does not exist before the first install
+
+- name: Bootstrap install
+  when: argocd_self_app.stdout == ''
+  block:
+    - name: Argo CD HelmChart in the K3s auto-deploy directory
+      ansible.builtin.template:
+        src: argocd.yaml.j2
+        dest: /var/lib/rancher/k3s/server/manifests/argocd.yaml
+        mode: "0600"
+
+    - name: Argo CD server available
+      ansible.builtin.command: k3s kubectl -n {{ argocd_namespace }} rollout status deploy/argocd-server --timeout=60s
+      register: argocd_rollout
+      until: argocd_rollout.rc == 0
+      retries: 20
+      delay: 10
+      changed_when: false
+      when: not ansible_check_mode
+
+- name: Repository credentials
+  ansible.builtin.command:
+    cmd: k3s kubectl apply -f -
+    stdin: "{{ lookup('ansible.builtin.template', 'repo-secret.yaml.j2') }}"
+  register: argocd_repo_secret
+  changed_when: "'unchanged' not in argocd_repo_secret.stdout"
+  no_log: true
+  when: argocd_repo_credentials | length > 0 and not ansible_check_mode
+
+- name: Root application
+  ansible.builtin.template:
+    src: root.yaml.j2
+    dest: /var/lib/rancher/k3s/server/manifests/argocd-root.yaml
+    mode: "0600"
+
+- name: Cilium and Argo CD Synced and Healthy under Argo CD
+  ansible.builtin.command: >-
+    k3s kubectl -n {{ argocd_namespace }} get application {{ item.app }}
+    -o jsonpath={.status.sync.status}/{.status.health.status}
+  register: argocd_app_state
+  until: argocd_app_state.stdout == 'Synced/Healthy'
+  retries: 60
+  delay: 10
+  changed_when: false
+  loop: "{{ argocd_handover }}"
+  loop_control:
+    label: "{{ item.app }}"
+  when: not ansible_check_mode
+
+- name: Hand over from K3s to Argo CD
+  ansible.builtin.include_tasks: handover.yml
+  loop: "{{ argocd_handover }}"
+  loop_control:
+    loop_var: argocd_item
+    label: "{{ argocd_item.app }}"

@@ -1,0 +1,6 @@
+# Installs Argo CD, points it at the GitOps repository, then hands Cilium and Argo CD
+# over from K3s to Argo CD without uninstalling either.
+- name: GitOps bootstrap
+  hosts: control_plane[0]
+  become: true
+  roles: [argocd]

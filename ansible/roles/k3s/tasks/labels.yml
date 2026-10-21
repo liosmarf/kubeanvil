@@ -1,0 +1,21 @@
+# K3s applies --node-label only at registration, so the zone label is managed with kubectl.
+- name: Current zone label
+  ansible.builtin.command:
+    cmd: >-
+      k3s kubectl get node {{ inventory_hostname }}
+      -o 'jsonpath={.metadata.labels.topology\.kubernetes\.io/zone}'
+  delegate_to: "{{ k3s_bootstrap_server }}"
+  register: k3s_zone_label
+  changed_when: false
+  check_mode: false
+  retries: 30 # a fresh node can take a while to register
+  delay: 10
+  until: k3s_zone_label.rc == 0
+  when: zone is defined
+
+- name: Zone label
+  ansible.builtin.command:
+    cmd: k3s kubectl label node {{ inventory_hostname }} --overwrite topology.kubernetes.io/zone={{ zone }}
+  delegate_to: "{{ k3s_bootstrap_server }}"
+  changed_when: true
+  when: zone is defined and k3s_zone_label.stdout != zone

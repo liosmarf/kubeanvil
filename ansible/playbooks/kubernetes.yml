@@ -1,0 +1,18 @@
+# etcd adds members one at a time, so the order matters:
+# first server (creates etcd and the token) -> other servers one by one -> workers.
+- name: Kubernetes · first control plane
+  hosts: control_plane[0]
+  become: true
+  roles: [k3s]
+
+- name: Kubernetes · remaining control planes
+  hosts: control_plane[1:]
+  become: true
+  serial: 1
+  roles: [k3s]
+
+- name: Kubernetes · workers
+  hosts: workers
+  become: true
+  serial: 1
+  roles: [k3s]

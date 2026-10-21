@@ -1,0 +1,5 @@
+# Installs Cilium once, before GitOps exists. Argo CD adopts it afterwards.
+- name: Cluster network bootstrap
+  hosts: control_plane[0]
+  become: true
+  roles: [cilium]

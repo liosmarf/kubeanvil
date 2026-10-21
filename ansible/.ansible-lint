@@ -1,0 +1,3 @@
+profile: production
+exclude_paths:
+  - roles/k3s/files/kube-vip-rbac.yaml # vendored upstream manifest, kept byte-identical

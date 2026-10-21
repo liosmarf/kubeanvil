@@ -1,0 +1,8 @@
+- name: Operating system
+  ansible.builtin.import_playbook: os.yml
+- name: Kubernetes
+  ansible.builtin.import_playbook: kubernetes.yml
+- name: Network
+  ansible.builtin.import_playbook: network.yml
+- name: GitOps
+  ansible.builtin.import_playbook: gitops.yml

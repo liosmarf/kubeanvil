@@ -1,0 +1,18 @@
+# The first server generates the token; everyone else reads it from there at run time.
+# It never touches Git or the Ansible controller's disk.
+- name: Existing cluster on the first server
+  ansible.builtin.stat:
+    path: /var/lib/rancher/k3s/server/token
+  register: k3s_token_file
+  delegate_to: "{{ k3s_bootstrap_server }}"
+  run_once: true
+
+# slurp only reads, so it also runs in --check; otherwise every node would show a fake change.
+- name: Cluster token
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/token
+  register: k3s_token
+  delegate_to: "{{ k3s_bootstrap_server }}"
+  run_once: true
+  no_log: true
+  when: k3s_token_file.stat.exists

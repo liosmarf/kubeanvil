@@ -1,0 +1,18 @@
+# Example of what `kubeanvil generate` renders from cluster.yaml. Secrets (S3 keys, Git
+# credentials) are passed at run time from secrets.sops.yaml, never written here.
+base_admin_user: ops
+base_admin_ssh_keys:
+  - ssh-ed25519 AAAA...replace-me admin@example
+base_timezone: UTC
+
+k3s_version: v1.36.5+k3s1
+k3s_api_vip: 192.168.50.90
+k3s_cluster_cidr: 10.42.0.0/16
+k3s_service_cidr: 10.43.0.0/16
+
+cilium_lb_range_start: 192.168.50.45
+cilium_lb_range_stop: 192.168.50.50
+
+argocd_repo_url: https://github.com/liosmarf/kubeanvil.git
+argocd_repo_revision: main
+argocd_root_path: gitops/clusters/lab

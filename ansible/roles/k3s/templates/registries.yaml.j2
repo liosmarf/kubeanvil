@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# containerd falls back to the upstream registry if a mirror does not answer.
+mirrors:
+{% for registry, endpoint in k3s_registry_mirrors.items() %}
+  {{ registry }}:
+    endpoint: ["{{ endpoint }}"]
+{% endfor %}

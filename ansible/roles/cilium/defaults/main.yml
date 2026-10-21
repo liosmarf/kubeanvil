@@ -1,0 +1,12 @@
+cilium_version: 1.20.3
+
+# Before Cilium runs, the "kubernetes" Service IP does not route: agents use the API VIP.
+cilium_k8s_service_host: "{{ k3s_api_vip }}"
+cilium_k8s_service_port: 6443
+
+# LoadBalancer IP range on the node network, announced over ARP (rendered from cluster.yaml).
+cilium_lb_range_start: ""
+cilium_lb_range_stop: ""
+cilium_l2_interface: "{{ k3s_interface | default(ansible_facts.default_ipv4.interface) }}"
+
+cilium_operator_replicas: "{{ [groups['all'] | length, 2] | min }}"

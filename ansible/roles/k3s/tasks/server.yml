@@ -1,0 +1,44 @@
+- name: API server admission and audit policies
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/rancher/k3s/{{ item }}"
+    mode: "0600"
+  loop: [audit-policy.yaml, psa-config.yaml]
+  notify: Restart k3s
+
+- name: Audit log directory
+  ansible.builtin.file:
+    path: /var/lib/rancher/k3s/server/logs
+    state: directory
+    mode: "0700"
+
+- name: Server configuration
+  ansible.builtin.template:
+    src: config-server.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    mode: "0600"
+  no_log: true
+  notify: Restart k3s
+
+- name: Server running
+  ansible.builtin.systemd_service:
+    name: k3s
+    state: started
+    enabled: true
+    daemon_reload: true
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Local API ready
+  ansible.builtin.uri:
+    url: https://127.0.0.1:6443/readyz
+    validate_certs: false
+    status_code: [200, 401]
+  register: k3s_readyz
+  until: k3s_readyz.status in [200, 401]
+  retries: 30
+  delay: 5
+  when: not ansible_check_mode
+
+- name: API VIP
+  ansible.builtin.include_tasks: kube-vip.yml
+  when: inventory_hostname == k3s_bootstrap_server

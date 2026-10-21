@@ -1,0 +1,16 @@
+argocd_chart_version: 10.10.5
+argocd_namespace: argocd
+
+# Rendered from cluster.yaml (spec.gitops).
+argocd_repo_url: ""
+argocd_repo_revision: main
+argocd_root_path: ""
+
+# Only for private repositories, decrypted from secrets.sops.yaml at run time.
+# HTTPS: username + password (a read-only token). SSH: ssh_private_key + ssh_known_hosts.
+argocd_repo_credentials: {}
+
+# Components installed by K3s during bootstrap and adopted by Argo CD afterwards.
+argocd_handover:
+  - { app: cilium, chart: cilium, files: [cilium.yaml, cilium-lb.yaml], addons: [cilium, cilium-lb] }
+  - { app: argocd, chart: argocd, files: [argocd.yaml], addons: [argocd] }

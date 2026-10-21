@@ -1,0 +1,37 @@
+# {{ ansible_managed }}
+# Minimal bootstrap install. GitOps adopts the release with the full values
+# (Gateway API, Hubble UI, policies) — keep this file a subset of those values.
+# bootstrap: true runs the Helm job with host networking, before any pod network exists.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: cilium
+  namespace: kube-system
+spec:
+  repo: https://helm.cilium.io
+  chart: cilium
+  version: "{{ cilium_version }}"
+  targetNamespace: kube-system
+  bootstrap: true
+  valuesContent: |-
+    k8sServiceHost: "{{ cilium_k8s_service_host }}"
+    k8sServicePort: {{ cilium_k8s_service_port }}
+    kubeProxyReplacement: true
+    # L2 announcements use Leases; raise the API rate limit accordingly.
+    k8sClientRateLimit: { qps: 50, burst: 100 }
+    ipam:
+      mode: kubernetes
+    routingMode: tunnel
+    tunnelProtocol: vxlan
+    bpf:
+      masquerade: true
+    cgroup:
+      autoMount:
+        enabled: false
+      hostRoot: /sys/fs/cgroup
+    l2announcements:
+      enabled: true
+    externalIPs:
+      enabled: true
+    operator:
+      replicas: {{ cilium_operator_replicas }}

@@ -1,0 +1,12 @@
+- name: Operating system baseline and hardening
+  hosts: all
+  become: true
+  roles:
+    - { role: base, tags: [base] }
+    - { role: hardening, tags: [hardening] }
+
+- name: Data disk for Longhorn
+  hosts: workers
+  become: true
+  roles:
+    - { role: data_disk, tags: [data_disk] }

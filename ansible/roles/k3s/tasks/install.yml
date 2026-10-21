@@ -1,0 +1,41 @@
+# A pinned release, verified against the checksum file published with it. No curl | sh.
+- name: K3s binary {{ k3s_version }}
+  ansible.builtin.get_url:
+    url: "https://github.com/k3s-io/k3s/releases/download/{{ k3s_version | urlencode }}/{{ k3s_binary }}"
+    checksum: "sha256:https://github.com/k3s-io/k3s/releases/download/{{ k3s_version | urlencode }}/sha256sum-{{ k3s_arch }}.txt"
+    dest: /usr/local/bin/k3s
+    mode: "0755"
+  vars:
+    k3s_arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts.architecture] }}"
+    k3s_binary: "{{ 'k3s' if k3s_arch == 'amd64' else 'k3s-' ~ k3s_arch }}"
+  notify: Restart k3s
+
+- name: Links for kubectl, crictl and ctr
+  ansible.builtin.file:
+    src: /usr/local/bin/k3s
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+    force: true
+  loop: [kubectl, crictl, ctr]
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Configuration directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0700"
+
+- name: Registry mirrors
+  ansible.builtin.template:
+    src: registries.yaml.j2
+    dest: /etc/rancher/k3s/registries.yaml
+    mode: "0600"
+  when: k3s_registry_mirrors | length > 0
+  notify: Restart k3s
+
+- name: Systemd unit
+  ansible.builtin.template:
+    src: k3s.service.j2
+    dest: "/etc/systemd/system/{{ k3s_service }}.service"
+    mode: "0644"
+  notify: Restart k3s

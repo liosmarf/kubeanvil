@@ -1,0 +1,4 @@
+# Stable ID set by the Proxmox module; /dev/sdb can change between boots.
+data_disk_device: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1
+data_disk_fstype: ext4
+data_disk_mountpoint: /var/lib/longhorn

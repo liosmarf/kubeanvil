@@ -1,0 +1,33 @@
+# Remove a component from K3s without uninstalling it: Argo CD owns it now.
+#
+# Deleting a HelmChart always runs "helm uninstall", and removing its finalizer does not help:
+# helm-controller adds it back. Deleting the Helm release history first does: the uninstall
+# job finds no release and removes nothing.
+# Order: auto-deploy files (or K3s re-applies them) -> Helm history -> HelmChart -> Addons.
+
+- name: Remove auto-deploy manifests · {{ argocd_item.app }}
+  ansible.builtin.file:
+    path: "/var/lib/rancher/k3s/server/manifests/{{ item }}"
+    state: absent
+  loop: "{{ argocd_item.files }}"
+
+- name: HelmChart still present · {{ argocd_item.chart }}
+  ansible.builtin.command: k3s kubectl -n kube-system get helmchart {{ argocd_item.chart }} --ignore-not-found -o name
+  register: argocd_helmchart
+  check_mode: false
+  changed_when: false
+
+- name: Retire the HelmChart without uninstalling · {{ argocd_item.chart }}
+  when: argocd_helmchart.stdout != '' and not ansible_check_mode
+  block:
+    - name: Delete the Helm release history
+      ansible.builtin.command: k3s kubectl delete secret -A -l owner=helm,name={{ argocd_item.chart }}
+      changed_when: true
+
+    - name: Delete the HelmChart
+      ansible.builtin.command: k3s kubectl -n kube-system delete helmchart {{ argocd_item.chart }} --timeout=120s
+      changed_when: true
+
+    - name: Delete the K3s Addon objects
+      ansible.builtin.command: k3s kubectl -n kube-system delete addon {{ argocd_item.addons | join(' ') }} --ignore-not-found
+      changed_when: true

@@ -1,0 +1,24 @@
+# {{ ansible_managed }}
+# Minimal bootstrap install; Argo CD then manages itself with the values in Git.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: argocd
+  namespace: kube-system
+spec:
+  repo: https://argoproj.github.io/argo-helm
+  chart: argo-cd
+  version: "{{ argocd_chart_version }}"
+  targetNamespace: {{ argocd_namespace }}
+  createNamespace: true
+  valuesContent: |-
+    configs:
+      params:
+        server.insecure: true
+{% if argocd_repo_credentials.ssh_known_hosts is defined %}
+      ssh:
+        extraHosts: |
+          {{ argocd_repo_credentials.ssh_known_hosts | indent(10) }}
+{% endif %}
+    dex:
+      enabled: false
