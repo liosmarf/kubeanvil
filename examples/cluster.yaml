@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=../cli/schema/cluster.schema.json
+#
+# Single source of truth for one cluster. `platformctl init` writes this file interactively;
+# `platformctl generate` renders Terraform, Ansible and GitOps inputs from it.
+# Secrets never live here: they go to secrets.sops.yaml (encrypted with SOPS + age).
+apiVersion: platformctl.io/v1alpha1
+kind: Cluster
+metadata:
+  name: lab                     # DNS-safe; used for VM names (lab-cp-01) and resource tags
+
+spec:
+  provider:
+    type: proxmox               # proxmox | vsphere (planned) | azure (planned)
+    proxmox:
+      endpoint: https://pve.example.lan:8006/
+      node: pve                 # Proxmox node that hosts the VMs
+      insecureTLS: false        # true only for self-signed API certificates
+      vmIdBase: 200             # control planes 201..., workers 211...
+      datastores:
+        disks: local-lvm        # VM OS and data disks
+        images: local           # cloud image (content type "import")
+        snippets: local         # cloud-init snippets (content type "snippets")
+      bridge: vmbr0
+      sshUser: root             # the provider uploads cloud-init snippets over SSH
+
+  image:
+    # Use releases/ URLs: daily builds are pruned after ~3 months and would break rebuilds.
+    url: https://cloud-images.ubuntu.com/releases/noble/release-20251022/ubuntu-24.04-server-cloudimg-amd64.img
+    sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+
+  network:
+    cidr: 192.168.50.0/24
+    gateway: 192.168.50.1
+    dnsServers: [192.168.50.10]
+    searchDomain: example.lan
+    apiVip: 192.168.50.90       # floating Kubernetes API address (kube-vip)
+    loadBalancerRange:          # LoadBalancer Services / Gateway (Cilium LB-IPAM + L2)
+      start: 192.168.50.45
+      end: 192.168.50.50
+    podCidr: 10.42.0.0/16
+    serviceCidr: 10.43.0.0/16
+
+  nodes:
+    controlPlane:
+      count: 3                  # 1 (dev) or 3 (HA etcd)
+      firstIp: 192.168.50.91
+      cpu: 4
+      memoryMiB: 8192
+      osDiskGiB: 40
+    workers:
+      count: 3
+      firstIp: 192.168.50.94
+      cpu: 4
+      memoryMiB: 12288
+      osDiskGiB: 60
+      dataDiskGiB: 100          # dedicated disk for Longhorn
+
+  kubernetes:
+    distribution: k3s
+    version: v1.36.5+k3s1
+
+  access:
+    adminUser: ops
+    sshPublicKeys:
+      - ssh-ed25519 AAAA...replace-me admin@example
+
+  dns:
+    baseDomain: k8s.example.com # apps get <name>.<baseDomain>
+    provider: cloudflare        # cloudflare | rfc2136 | none
+    rfc2136:                    # only when provider = rfc2136 (BIND, Technitium, PowerDNS)
+      server: 192.168.50.10
+      zone: k8s.example.com
+
+  tls:
+    issuer: letsencrypt         # letsencrypt (DNS-01) | internal-ca
+    acmeEmail: admin@example.com
+
+  gitops:
+    repoUrl: https://github.com/your-user/k8s-platform-iac.git
+    revision: main
+
+  backup:
+    s3:
+      endpoint: https://s3.example.lan
+      region: us-east-1
+      bucket: k8s-platform-backups
+
+  components:                   # the core platform is always on; these are optional
+    rancher: false
+    keda: false
+    tracing: false              # OpenTelemetry Collector + Tempo

@@ -1,0 +1,23 @@
+# Generated per cluster by `platformctl generate` — never committed
+/clusters/
+*.tfvars.json
+# Terraform / OpenTofu
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+# Secrets: only the SOPS-encrypted file may be committed
+*.age
+age.key
+.env
+secrets.yaml
+!secrets.sops.yaml
+kubeconfig*
+# Go
+/cli/dist/
+/cli/platformctl
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
