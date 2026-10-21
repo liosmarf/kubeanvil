@@ -1,0 +1,34 @@
+#!/usr/bin/expect -f
+# Drives the visual `kubeanvil init` in a real pseudo-terminal with key presses: picks the
+# "Small HA" preset with the up arrow, accepts every other proposed value and writes the file.
+# Catches regressions that unit tests cannot, such as keys never reaching the form.
+#
+# Usage: scripts/wizard-smoke.exp <kubeanvil binary>   (run in an empty directory)
+set timeout 6
+log_user 0
+set env(TERM) xterm-256color
+spawn [lindex $argv 0] init
+stty rows 40 columns 120 < $spawn_out(slave,name)
+
+# Answer the queries a real terminal answers: background colour and cursor position.
+expect_before {
+  -re {\]11;\?} { send "\033\]11;rgb:0000/0000/0000\033\\"; exp_continue }
+  -re {\[6n}    { send "\033\[1;1R"; exp_continue }
+}
+
+expect "Starting size"
+send "\r"
+expect "Starting size"
+sleep 0.3
+send "\033\[A"
+sleep 0.2
+send "\r"
+
+for {set i 0} {$i < 120} {incr i} {
+  sleep 0.15
+  expect -timeout 0 timeout {}
+  send "\r"
+  if {[file exists cluster.yaml]} { exit 0 }
+}
+puts stderr "wizard did not write cluster.yaml"
+exit 1

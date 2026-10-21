@@ -29,7 +29,7 @@ func Run(existing *config.Cluster, cat *catalog.Catalog, opts Options) (*config.
 	if c == nil {
 		c = newCluster()
 	}
-	w := &wizard{c: c, cat: cat, opts: opts}
+	w := &wizard{c: c, cat: cat, opts: opts, edit: existing != nil}
 	for {
 		if err := w.ask(); err != nil {
 			return nil, err
@@ -55,6 +55,7 @@ func Run(existing *config.Cluster, cat *catalog.Catalog, opts Options) (*config.
 }
 
 type wizard struct {
+	edit bool // re-running on an existing cluster.yaml
 	c    *config.Cluster
 	cat  *catalog.Catalog
 	opts Options
@@ -86,7 +87,13 @@ func (w *wizard) form(groups ...*huh.Group) error {
 	if w.opts.Accessible && stdinClosed() {
 		return errors.New("input ended before all questions were answered")
 	}
-	err := huh.NewForm(groups...).WithAccessible(w.opts.Accessible).WithInput(stdin).Run()
+	form := huh.NewForm(groups...).WithAccessible(w.opts.Accessible)
+	if w.opts.Accessible {
+		// Only here: the visual form must read the terminal itself to switch it to raw mode,
+		// otherwise arrow keys and Enter never reach it.
+		form = form.WithInput(stdin)
+	}
+	err := form.Run()
 	if errors.Is(err, huh.ErrUserAborted) {
 		return errors.New("aborted, nothing written")
 	}
@@ -110,12 +117,15 @@ func (w *wizard) form(groups ...*huh.Group) error {
 // --- steps -----------------------------------------------------------------------------
 
 func (w *wizard) basics() error {
-	preset := "keep"
-	opts := []huh.Option[string]{}
+	preset := "production"
+	var opts []huh.Option[string]
+	if w.edit {
+		preset = "keep"
+		opts = append(opts, huh.NewOption(fmt.Sprintf("%-16s %s", "Current", "Keep the node counts and sizes in cluster.yaml."), "keep"))
+	}
 	for _, p := range presets {
 		opts = append(opts, huh.NewOption(fmt.Sprintf("%-16s %s", p.Title, p.Description), p.ID))
 	}
-	opts = append(opts, huh.NewOption("Keep current sizes  Use the node counts and sizes already in cluster.yaml", "keep"))
 	err := w.form(huh.NewGroup(
 		w.input("Cluster name", "Lowercase; used for VM names like <name>-cp-01.", &w.c.Metadata.Name, nonEmpty),
 		huh.NewSelect[string]().Title("Starting size").Description("Every value can be adjusted afterwards.").
@@ -496,13 +506,20 @@ func (e *eofReader) Read(p []byte) (int, error) {
 
 func stdinClosed() bool { return stdin.eof }
 
-// localPublicKey offers the user's own SSH key as the default admin key.
+// localPublicKey offers the user's own SSH key as the default admin key: a standard
+// id_<type>.pub first, otherwise any other id_*.pub.
 func localPublicKey() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
-	for _, name := range []string{"id_ed25519.pub", "id_ecdsa.pub", "id_rsa.pub"} {
+	candidates := []string{"id_ed25519.pub", "id_ecdsa.pub", "id_rsa.pub"}
+	if others, _ := filepath.Glob(filepath.Join(home, ".ssh", "id_*.pub")); others != nil {
+		for _, o := range others {
+			candidates = append(candidates, filepath.Base(o))
+		}
+	}
+	for _, name := range candidates {
 		if data, err := os.ReadFile(filepath.Join(home, ".ssh", name)); err == nil {
 			return strings.TrimSpace(string(data))
 		}
