@@ -8,6 +8,19 @@ helps you write.
 > **Status: work in progress.** The design below is settled (see [ADRs](docs/adr/)); components
 > are being ported from a working homelab cluster one at a time. See the [roadmap](#roadmap).
 
+## Quick start
+
+On a Proxmox VE host shell (like the Proxmox Community Scripts):
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/<owner>/k8s-platform-iac/v1.0.0/install.sh)"
+```
+
+The installer discovers your Proxmox environment, offers to create a least-privilege API user
+and a small management container, then starts the interactive wizard
+([ADR 0005](docs/adr/0005-one-line-installer-and-bastion.md)). Prefer to read before running?
+Download `install.sh`, review it, then run `bash install.sh`.
+
 ## How it works
 
 ```mermaid
@@ -73,6 +86,7 @@ examples/       a fully commented cluster.yaml
 - [ ] Ansible roles (OS hardening, HA K3s, Cilium, Argo CD bootstrap)
 - [ ] GitOps platform layer (core components)
 - [ ] `platformctl init / generate / secrets / apply`
+- [ ] `install.sh`: Proxmox discovery, API user, bastion LXC
 - [ ] CI: formatting, validation, linting, policy and secret scanning
 - [ ] Identity (Keycloak), secrets (ESO + OpenBao), supply-chain scanning
 - [ ] vSphere and Azure modules
