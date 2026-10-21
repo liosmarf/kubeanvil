@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -52,6 +53,10 @@ func rootCmd() *cobra.Command {
 				}
 			}
 			c, err := wizard.Run(existing, cat, wizard.Options{Accessible: accessible})
+			if errors.Is(err, wizard.ErrCancelled) {
+				fmt.Fprintln(cmd.OutOrStdout(), "Cancelled. Nothing was written.")
+				return nil
+			}
 			if err != nil {
 				return err
 			}

@@ -37,10 +37,24 @@ func Run(existing *config.Cluster, cat *catalog.Catalog, opts Options) (*config.
 			return nil, err
 		}
 	}
+	w.step = 0
 	if err := w.review(); err != nil {
 		return nil, err
 	}
 	return w.c, nil
+}
+
+// ErrCancelled means the user left the wizard on purpose; nothing was written.
+var ErrCancelled = errors.New("cancelled, nothing written")
+
+const quickStartSteps = 4
+
+// title numbers the questions of the quick start.
+func (w *wizard) title(t string) string {
+	if w.step == 0 {
+		return t
+	}
+	return fmt.Sprintf("%s (%d of %d)", t, w.step, quickStartSteps)
 }
 
 type wizard struct {
@@ -48,6 +62,7 @@ type wizard struct {
 	cat  *catalog.Catalog
 	opts Options
 	host *proxmoxHost // nil when the Proxmox host could not be read
+	step int          // current quick-start question, 0 outside the quick start
 	// Inputs of the current form. Accessible prompts return "" for a bare Enter; these
 	// remember the proposed value so Enter keeps it, as it does in the visual form.
 	texts []*textField
@@ -57,7 +72,8 @@ type wizard struct {
 // quickStart asks only what cannot be discovered.
 func (w *wizard) quickStart() error {
 	c := w.c
-	if err := w.ask(w.input("Cluster name", "Lowercase letters, digits and dashes. VMs are named <name>-cp-01, <name>-wk-01…",
+	w.step++
+	if err := w.ask(w.input(w.title("Cluster name"), "Lowercase letters, digits and dashes. VMs are named <name>-cp-01, <name>-wk-01…",
 		&c.Metadata.Name, validName)); err != nil {
 		return err
 	}
@@ -73,17 +89,19 @@ func (w *wizard) quickStart() error {
 	if w.host != nil {
 		w.applyPreset(w.fittingPreset())
 	}
+	w.step++
 	if err := w.editSize(); err != nil {
 		return err
 	}
-	recommended := true
-	if err := w.ask(huh.NewSelect[bool]().Title("Platform components").
+	w.step++
+	components := "recommended"
+	if err := w.ask(huh.NewSelect[string]().Title(w.title("Platform components")).
 		Description("Storage, monitoring, logs, backups, policies… one proven choice in each category.").
-		Options(huh.NewOption("Use the recommended set", true), huh.NewOption("Choose each one myself", false)).
-		Value(&recommended)); err != nil {
+		Options(huh.NewOption("Use the recommended set", "recommended"), huh.NewOption("Choose each one myself", "choose")).
+		Value(&components)); err != nil {
 		return err
 	}
-	if !recommended {
+	if components == "choose" {
 		return w.editComponents()
 	}
 	return nil
@@ -93,9 +111,10 @@ func (w *wizard) quickStart() error {
 // the user may retry or type the settings in.
 func (w *wizard) connect() error {
 	target, local := "", onProxmox()
+	w.step++
 	for {
 		if !local {
-			if err := w.ask(w.input("Proxmox host", "Name or IP of the Proxmox node for the VMs, as in `ssh root@<host>`. kubeanvil only reads from it.",
+			if err := w.ask(w.input(w.title("Proxmox host"), "Name or IP of the Proxmox node for the VMs, as in `ssh root@<host>`. kubeanvil only reads from it.",
 				&target, nonEmpty)); err != nil {
 				return err
 			}
@@ -113,14 +132,14 @@ func (w *wizard) connect() error {
 			return nil
 		}
 
-		retry := true
-		if err := w.ask(huh.NewSelect[bool]().Title(fmt.Sprintf("Could not read %s: %v", where, err)).
+		next := "retry"
+		if err := w.ask(huh.NewSelect[string]().Title(fmt.Sprintf("Could not read %s: %v", where, err)).
 			Description("kubeanvil logs in as root with a key from ~/.ssh. Check that `ssh root@"+target+"` works without a password.").
-			Options(huh.NewOption("Try again", true), huh.NewOption("Enter the Proxmox details myself", false)).
-			Value(&retry)); err != nil {
+			Options(huh.NewOption("Try again", "retry"), huh.NewOption("Enter the Proxmox details myself", "manual")).
+			Value(&next)); err != nil {
 			return err
 		}
-		if !retry {
+		if next == "manual" {
 			p := w.c.Spec.Provider.Proxmox
 			if _, addr, ok := strings.Cut(target, "@"); ok {
 				target = addr
@@ -181,7 +200,7 @@ func (w *wizard) review() error {
 		case "write":
 			return nil
 		case "quit":
-			return errors.New("quit, nothing written")
+			return ErrCancelled
 		}
 		for _, s := range sections {
 			if s.id == choice {
@@ -215,7 +234,7 @@ func (w *wizard) form(groups ...*huh.Group) error {
 	}
 	err := form.Run()
 	if errors.Is(err, huh.ErrUserAborted) {
-		return errors.New("aborted, nothing written")
+		return ErrCancelled
 	}
 	if err != nil {
 		return err
@@ -256,7 +275,7 @@ func (w *wizard) editSize() error {
 	if w.host != nil {
 		desc = fmt.Sprintf("%s has %s of memory free.", w.host.Node, mib(w.host.freeMiB()))
 	}
-	if err := w.ask(huh.NewSelect[string]().Title("Cluster size").Description(desc).Options(opts...).Value(&choice)); err != nil {
+	if err := w.ask(huh.NewSelect[string]().Title(w.title("Cluster size")).Description(desc).Options(opts...).Value(&choice)); err != nil {
 		return err
 	}
 	for _, p := range presets {
@@ -271,15 +290,17 @@ func (w *wizard) editSize() error {
 func (w *wizard) editNodeValues() error {
 	cp, wk := &w.c.Spec.Nodes.ControlPlane, &w.c.Spec.Nodes.Workers
 	block := cp.Count + wk.Count
+	cpCount := strconv.Itoa(cp.Count)
 	err := w.ask(
-		huh.NewSelect[int]().Title("Control planes").Description("They run Kubernetes itself and etcd, which needs an odd number.").
-			Options(huh.NewOption("1 — no high availability", 1), huh.NewOption("3 — survives one failure", 3),
-				huh.NewOption("5 — survives two failures", 5)).Value(&cp.Count),
+		huh.NewSelect[string]().Title("Control planes").Description("They run Kubernetes itself and etcd, which needs an odd number.").
+			Options(huh.NewOption("1 — no high availability", "1"), huh.NewOption("3 — survives one failure", "3"),
+				huh.NewOption("5 — survives two failures", "5")).Value(&cpCount),
 		w.intInput("vCPUs per control plane", "", &cp.CPU),
 		w.gibInput("Memory per control plane (GiB)", "4 is enough for K3s and etcd; 8 leaves headroom.", &cp.MemoryMiB),
 		w.intInput("Disk per control plane (GiB)", "", &cp.OSDiskGiB),
 		w.intInput("Workers", "Your applications and the platform run here. 0 runs everything on the control planes.", &wk.Count),
 	)
+	cp.Count, _ = strconv.Atoi(cpCount)
 	if err == nil && wk.Count > 0 {
 		err = w.ask(
 			w.intInput("vCPUs per worker", "", &wk.CPU),
@@ -459,11 +480,12 @@ func (w *wizard) inUse() map[netip.Addr]bool {
 	return w.host.inUse
 }
 
-// fittingPreset is the largest preset that fits in the host's free memory, else the smallest.
+// fittingPreset is the largest preset that fits in three quarters of the host's free
+// memory, leaving room for other VMs, else the smallest.
 func (w *wizard) fittingPreset() Preset {
 	best := presets[0]
 	for _, p := range presets {
-		if presetMiB(p) <= w.host.freeMiB() {
+		if presetMiB(p) <= w.host.freeMiB()*3/4 {
 			best = p
 		}
 	}
@@ -615,7 +637,7 @@ func Summary(c *config.Cluster, cat *catalog.Catalog) string {
 		backup = s.Backup.S3.Bucket + " at " + s.Backup.S3.Endpoint
 	}
 	fmt.Fprintf(&b, "  Backups      %s\n", backup)
-	fmt.Fprintf(&b, "  Components   %s", componentNames(c, cat))
+	fmt.Fprintf(&b, "  Components   %s", wrap(componentNames(c, cat), 80, "\n               "))
 	if appMiB > 0 && platform*100/appMiB > 75 {
 		b.WriteString("\n  ⚠ Little room left for your own applications: add workers or memory.")
 	}
@@ -632,6 +654,23 @@ func componentNames(c *config.Cluster, cat *catalog.Catalog) string {
 		}
 	}
 	return strings.Join(names, ", ")
+}
+
+// wrap breaks a comma-separated list into lines of at most width characters.
+func wrap(list string, width int, sep string) string {
+	var lines []string
+	line := ""
+	for _, item := range strings.Split(list, ", ") {
+		if line != "" && len(line)+2+len(item) > width {
+			lines = append(lines, line+",")
+			line = ""
+		}
+		if line != "" {
+			line += ", "
+		}
+		line += item
+	}
+	return strings.Join(append(lines, line), sep)
 }
 
 func count(n int, noun string) string {
@@ -663,10 +702,16 @@ type intField struct {
 func (w *wizard) input(title, desc string, value *string, check func(string) error) *huh.Input {
 	f := &textField{value: value, proposed: *value}
 	w.texts = append(w.texts, f)
-	if w.opts.Accessible && f.proposed != "" {
-		title += " [" + f.proposed + "]" // accessible prompts do not print descriptions
+	in := huh.NewInput().Title(title).Description(desc)
+	if f.proposed != "" {
+		if w.opts.Accessible {
+			in.Title(title + " [" + f.proposed + "]") // accessible prompts do not print descriptions
+		} else {
+			in.Placeholder(f.proposed) // typing replaces the proposal; Enter keeps it
+			*value = ""
+		}
 	}
-	return huh.NewInput().Title(title).Description(desc).Value(value).Validate(func(s string) error {
+	return in.Value(value).Validate(func(s string) error {
 		if strings.TrimSpace(s) == "" && f.proposed != "" {
 			return nil
 		}

@@ -1,4 +1,5 @@
-# Generated per cluster by `kubeanvil generate` — never committed
+# Your own cluster definition (written by `kubeanvil init`) and everything generated from it
+/cluster.yaml
 /clusters/
 *.tfvars.json
 # Terraform / OpenTofu
