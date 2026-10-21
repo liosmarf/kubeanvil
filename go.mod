@@ -1,6 +1,6 @@
 module github.com/liosmarf/kubeanvil
 
-go 1.27.3
+go 1.24
 
 require (
 	github.com/charmbracelet/huh v1.0.0
