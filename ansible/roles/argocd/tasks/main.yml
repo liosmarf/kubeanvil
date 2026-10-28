@@ -32,6 +32,25 @@
   no_log: true
   when: argocd_repo_credentials | length > 0 and not ansible_check_mode
 
+# Grafana reads its admin login from a Secret. Until External Secrets + OpenBao exist
+# (ADR 0002), it is created once with a random password that never leaves the cluster.
+- name: Grafana admin secret
+  when: (argocd_platform_values.components | default({})).metrics | default('') == 'kube-prometheus-stack'
+  block:
+    - name: Grafana admin secret exists
+      ansible.builtin.command: k3s kubectl -n monitoring get secret grafana-admin --ignore-not-found -o name
+      register: argocd_grafana_secret
+      check_mode: false
+      changed_when: false
+
+    - name: Create the Grafana admin secret
+      ansible.builtin.command:
+        cmd: k3s kubectl apply -f -
+        stdin: "{{ lookup('ansible.builtin.template', 'grafana-admin.yaml.j2') }}"
+      changed_when: true
+      no_log: true
+      when: argocd_grafana_secret.stdout == '' and not ansible_check_mode
+
 - name: Root application
   ansible.builtin.template:
     src: root.yaml.j2

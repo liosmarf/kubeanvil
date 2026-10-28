@@ -42,7 +42,7 @@ alertmanager:
           resources: { requests: { storage: 2Gi } }
 grafana:
   admin:
-    existingSecret: grafana-admin # created at bootstrap from secrets.sops.yaml
+    existingSecret: grafana-admin # created once at bootstrap by ansible/roles/argocd
     userKey: admin-user
     passwordKey: admin-password
   ingress:
