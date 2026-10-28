@@ -44,7 +44,9 @@ trap 'rm -rf "$work"' EXIT
 # fetch URL DEST SHA256: download and refuse anything that does not match the checksum.
 fetch() {
   curl -fsSL --retry 3 -o "$2" "$1"
-  echo "$3  $2" | sha256sum -c --quiet - || die "checksum mismatch for $1"
+  local sum
+  sum=$( { sha256sum "$2" 2>/dev/null || shasum -a 256 "$2"; } | cut -d' ' -f1) # shasum on older macOS
+  [[ $sum == "$3" ]] || die "checksum mismatch for $1"
 }
 
 # release_sha256 ASSET: the checksum GoReleaser published for an asset of this release.
@@ -76,7 +78,7 @@ install_cli() {
   say "Installed $bin/kubeanvil $KUBEANVIL_VERSION."
 
   if command -v git >/dev/null && [[ ! -e kubeanvil ]]; then
-    git clone --quiet --depth 1 --branch "$KUBEANVIL_VERSION" "https://github.com/$REPO.git" kubeanvil
+    git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$KUBEANVIL_VERSION" "https://github.com/$REPO.git" kubeanvil
     say "Checked out the repository in ./kubeanvil (Terraform and Ansible run from it)."
   fi
   say "
@@ -174,7 +176,7 @@ added to root's authorized_keys on this host so the wizard and Terraform can rea
     export DEBIAN_FRONTEND=noninteractive
     apt-get -qq update
     apt-get -qq install -y --no-install-recommends ansible-core age git openssh-client ca-certificates curl python3 >/dev/null
-    git clone --quiet --depth 1 --branch '$KUBEANVIL_VERSION' 'https://github.com/$REPO.git' /root/kubeanvil
+    git -c advice.detachedHead=false clone --quiet --depth 1 --branch '$KUBEANVIL_VERSION' 'https://github.com/$REPO.git' /root/kubeanvil
     install -d -m 0700 /root/.ssh
     ssh-keygen -q -t ed25519 -N '' -C 'kubeanvil bastion' -f /root/.ssh/id_ed25519
     install -d -m 0700 /root/.config/kubeanvil
