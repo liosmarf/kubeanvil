@@ -16,7 +16,7 @@ import (
 	"github.com/liosmarf/kubeanvil/internal/wizard"
 )
 
-// version is set at build time: -ldflags "-X main.version=v0.1.0"
+// version is set at build time: -ldflags "-X main.version=v1.0.0"
 var version = "dev"
 
 func main() {

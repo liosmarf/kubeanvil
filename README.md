@@ -1,93 +1,141 @@
 # kubeanvil
 
 [![CI](https://github.com/liosmarf/kubeanvil/actions/workflows/ci.yml/badge.svg)](https://github.com/liosmarf/kubeanvil/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/liosmarf/kubeanvil)](https://github.com/liosmarf/kubeanvil/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Build a highly available Kubernetes cluster on Proxmox VE and bootstrap it with GitOps, from
-one configuration file. An interactive installer asks the questions; Terraform, Ansible and
-Argo CD do the work.
+A highly available Kubernetes platform on Proxmox VE from one configuration file. An
+interactive wizard reads your Proxmox host and asks four questions; Terraform creates the VMs,
+Ansible installs hardened Ubuntu, K3s and Cilium, and Argo CD installs the rest of the platform
+from Git.
 
-> **Early development.** First end-to-end run done on Proxmox VE 9 (3 control planes, 3 workers,
-> every component Synced and Healthy); no release yet — see [status](#status).
-
-## Try the CLI
-
-Requires Go 1.24+. `init`, `validate` and `generate` only write files; `apply` creates VMs.
-
-`init` asks four things: a cluster name, your Proxmox host, a size and whether the
-recommended components suit you. It reads the rest from the host over SSH (read-only
-`pvesh` and a ping sweep): storages, bridge and subnet, DNS, time zone, free memory, used
-VMIDs and taken IP addresses. A review screen then shows the whole plan and lets you change
-any part before `cluster.yaml` is written.
-
-```bash
-go run ./cmd/kubeanvil init      # questions → cluster.yaml (add --accessible for plain prompts)
-go run ./cmd/kubeanvil validate  # catches overlapping IPs, etcd quorum, unsupported choices…
-go run ./cmd/kubeanvil generate  # Terraform, Ansible and platform inputs under clusters/<name>/
-go run ./cmd/kubeanvil secrets   # DNS token, backup keys…, encrypted with SOPS + age (only if needed)
-go run ./cmd/kubeanvil apply     # VMs, OS, K3s, Cilium, Argo CD; asks before each phase
-go run ./cmd/kubeanvil destroy   # deletes the VMs (type the cluster name to confirm)
+```text
+kubeanvil init    →  cluster.yaml  →  kubeanvil apply
+                                       ├─ OpenTofu   VMs, disks, cloud-init
+                                       ├─ Ansible    OS hardening, HA K3s, Cilium, Argo CD
+                                       └─ Argo CD    storage, monitoring, logs, policies…
 ```
 
-`apply` also needs OpenTofu (or Terraform) and Ansible. It reads the Proxmox API token from
-`PROXMOX_VE_API_TOKEN` or asks for it, and never stores it. Terraform state and the kubeconfig
-stay in `clusters/<name>/`, which is git-ignored.
+## What you get
 
-## How it works
+- **HA control plane:** K3s with embedded etcd on 1, 3 or 5 nodes behind a kube-vip address.
+- **Networking:** Cilium in place of kube-proxy, with LoadBalancer IPs on your LAN, Ingress
+  and Gateway API.
+- **Platform:** components picked from a [catalog](gitops/platform/catalog.yaml) of the two
+  or three options teams usually weigh, each with pinned versions, pros and cons. Every
+  component is one Argo CD Application.
+- **Always installed:** cert-manager (Let's Encrypt or an internal CA), metrics-server and kured
+  for rolling reboots after security updates. External DNS and Velero backups are added when
+  configured.
 
-```mermaid
-flowchart LR
-    I["kubeanvil init<br/>(interactive)"] --> C[cluster.yaml]
-    C --> T["Terraform<br/>VMs"]
-    C --> A["Ansible<br/>OS + K3s + Cilium"]
-    C --> G["Argo CD<br/>platform components"]
-    T --> A --> G
-```
+| Category | Default | Also supported |
+|---|---|---|
+| Pod networking, Ingress and Gateway API | Cilium | |
+| Persistent storage | Longhorn | |
+| GitOps | Argo CD | |
+| Policy engine | Kyverno | |
+| Metrics and alerting | Prometheus + Grafana | |
+| Logs | Loki + Alloy | none |
+| PostgreSQL operator | CloudNativePG | none |
+| Cluster UI | none | Rancher |
 
-`cluster.yaml` is the only file you edit (or let the wizard write). Everything else is
-generated from it, so Terraform, Ansible and Argo CD never disagree about an IP address or a
-domain. See [`examples/cluster.yaml`](examples/cluster.yaml) and
-[ADR 0001](docs/adr/0001-single-cluster-config.md). The cluster's own values reach Argo CD
-inside the root Application, so nothing about your network is committed to Git
-([ADR 0007](docs/adr/0007-cluster-values-in-the-root-application.md)).
+Calico, Traefik, Envoy Gateway, Rook-Ceph, Flux, OpenBao, Keycloak, VictoriaMetrics and Tempo
+are listed in the wizard as planned, so you can see the trade-offs.
 
-The entry point is a single command on the Proxmox host, in the spirit of the Proxmox VE
-Community Scripts ([ADR 0005](docs/adr/0005-one-line-installer-and-bastion.md)):
+## Quick start
 
-```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/liosmarf/kubeanvil/v0.1.0/install.sh)"
-```
-
-It asks before each change: an API user and token with only the privileges Terraform needs,
-then a small Debian container (the bastion) with kubeanvil, OpenTofu, Ansible, kubectl, helm
-and SOPS, every download checked against a pinned SHA-256. On any other machine it installs
-the binary and a checkout. To read the script first:
+On a Proxmox VE host, as root:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/liosmarf/kubeanvil/v0.1.0/install.sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/liosmarf/kubeanvil/v1.0.0/install.sh)"
+```
+
+The installer asks before every change. It creates:
+
+1. an API user and token with only the privileges Terraform needs;
+2. a small Debian container, the bastion, with kubeanvil, OpenTofu, Ansible, kubectl, helm and
+   SOPS. Each download is checked against a pinned SHA-256.
+
+Then run, inside the bastion:
+
+```bash
+cd kubeanvil
+kubeanvil init     # four questions, then a review of the whole plan
+kubeanvil apply    # shows the Terraform plan and asks before each phase
+```
+
+To read the script before running it:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/liosmarf/kubeanvil/v1.0.0/install.sh
 less install.sh && bash install.sh
 ```
 
-## Status
+On any other machine, the same script installs the binary and a checkout of this repository.
+You then need OpenTofu (or Terraform) and Ansible. From source, you need Go 1.24+ and run
+`go run ./cmd/kubeanvil`.
 
-| Part | State |
+## Commands
+
+| Command | What it does |
 |---|---|
-| Proxmox VM module and environment ([`terraform/`](terraform/)) | ✅ validated with Terraform and OpenTofu |
-| Ansible: OS hardening, HA K3s, Cilium, Argo CD bootstrap ([`ansible/`](ansible/)) | ✅ passes ansible-lint (production); run end to end |
-| [Component catalog](gitops/platform/catalog.yaml): 12 categories, the 2–3 most used options each, pinned versions | ✅ |
-| GitOps platform chart: one Argo CD Application per selected component ([`gitops/`](gitops/)) | ✅ every component renders and validates ([`scripts/check-gitops.sh`](scripts/check-gitops.sh)) |
-| `kubeanvil` CLI ([`cmd/`](cmd/), [`internal/`](internal/)): `validate`, `generate` | ✅ tested (`go test ./...`) |
-| `kubeanvil init` wizard: Proxmox discovery, size presets, component choice, review | ✅ tested against a real Proxmox host and in a pty |
-| `kubeanvil apply` / `destroy`: Terraform → Ansible → Argo CD bootstrap → kubeconfig | ✅ `apply` run end to end and re-run idempotently · 🚧 `destroy` |
-| One-line installer: API token, bastion container, pinned tools ([`install.sh`](install.sh)) | ✅ built, ShellCheck clean · 🚧 run on a host |
-| Bootstrap secrets with SOPS + age (`kubeanvil secrets`) | ✅ tested round trip |
-| CI: Go, pty wizard, OpenTofu, ansible-lint, chart rendering, ShellCheck, gitleaks; Renovate; GoReleaser | ✅ |
-| vSphere and Azure modules ([ADR 0003](docs/adr/0003-provider-node-contract.md)) | planned |
+| `init` | Reads the Proxmox host over SSH with read-only `pvesh` calls and a ping sweep: storages, bridges, subnet, DNS, time zone, free memory, used VMIDs and taken IP addresses. Asks for a name, the host, a size and the components, then shows a review where any section can be changed. |
+| `validate` | Catches overlapping addresses, an even number of etcd members, a LoadBalancer range that collides with nodes, and unsupported choices. |
+| `generate` | Renders the Terraform variables, the Ansible inventory and the platform values from `cluster.yaml`. |
+| `secrets` | Hidden prompts for the secrets your choices need, such as a DNS token or backup keys. Writes them to `secrets.sops.yaml`, encrypted with SOPS and age. |
+| `apply` | Generate, then Terraform, Ansible, the Argo CD bootstrap and the kubeconfig. Safe to run again: unchanged phases do nothing. |
+| `destroy` | Deletes the cluster's VMs after you type its name. |
+
+## How it works
+
+`cluster.yaml` is the only file you edit, or let the wizard write. Terraform, Ansible and
+Argo CD all read values generated from it, so they never disagree about an address or a
+domain. See [`examples/cluster.yaml`](examples/cluster.yaml).
+
+- **Terraform** ([`terraform/`](terraform/)) creates one VM per node from the Ubuntu cloud
+  image and passes its network and user configuration through cloud-init. The node interface
+  is the same for every provider, so vSphere and Azure modules can slot in.
+- **Ansible** ([`ansible/`](ansible/)) hardens the OS, installs K3s and Cilium, then installs
+  Argo CD. Once Argo CD runs, it hands Cilium and Argo CD over to Argo CD itself without
+  reinstalling either.
+- **Argo CD** renders the [platform chart](gitops/platform/), which creates one Application
+  per selected component, in dependency order.
+- **Your network stays out of Git.** The cluster's own values (addresses, domain) travel
+  inside the root Application, so a cluster can follow this public repository without a fork.
+- **Secrets:** bootstrap secrets are encrypted with SOPS + age and handed to Ansible in
+  memory. kubeanvil never writes the Proxmox token to disk. The installer stores it only
+  inside the bastion, readable by root.
+
+## Tested
+
+- **End to end on Proxmox VE 9:** 3 control planes and 3 workers. All 19 Applications are
+  Synced and Healthy. A second `apply` changed only what `cluster.yaml` changed (adding
+  Rancher).
+- **CI on every push:**
+  - unit tests, including a real SOPS/age round trip;
+  - the wizard driven with key presses in a pseudo-terminal;
+  - `tofu validate` and `ansible-lint` (production profile);
+  - every component rendered and checked with kubeconform;
+  - ShellCheck and gitleaks over the full history.
+- **Dependencies:** Renovate proposes updates for the 28 pinned chart versions and the CI
+  tools.
+
+Known limits in 1.0:
+- Proxmox is the only provider.
+- External Secrets with OpenBao and single sign-on are planned.
+- `destroy` and the installer's bastion have been exercised less than `apply`.
 
 ## Design decisions
 
-The [ADRs](docs/adr/) record what was decided and why: a single config file, secrets with
-External Secrets + OpenBao (SOPS for bootstrap), a node contract shared by all providers, a Go
-CLI, the installer, the component catalog, and per-cluster values kept out of Git.
+The [architecture decision records](docs/adr/) explain the choices:
+
+1. [One `cluster.yaml` per cluster](docs/adr/0001-single-cluster-config.md)
+2. [Secrets: External Secrets + OpenBao, SOPS for bootstrap](docs/adr/0002-secrets-eso-openbao-sops.md)
+3. [A node contract shared by all providers](docs/adr/0003-provider-node-contract.md)
+4. [A Go CLI](docs/adr/0004-kubeanvil-go-cli.md)
+5. [One-line installer and a bastion container](docs/adr/0005-one-line-installer-and-bastion.md)
+6. [A catalog of common choices](docs/adr/0006-component-catalog.md)
+7. [Cluster values in the root Application](docs/adr/0007-cluster-values-in-the-root-application.md)
 
 ## License
 

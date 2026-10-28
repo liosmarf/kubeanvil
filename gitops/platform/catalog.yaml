@@ -1,7 +1,7 @@
 # Component catalog (ADR 0006).
 #
 # Per category: the question the wizard asks, the default, and the two or three options most
-# teams actually choose between. `supported` options are the v0.1 scope, ported from a running
+# teams actually choose between. `supported` options are the v1 scope, ported from a running
 # cluster; `planned` ones are listed so users can see the trade-off, but cannot be selected yet.
 #
 # Memory figures are rough steady-state totals for a 3-node cluster, to help size workers.

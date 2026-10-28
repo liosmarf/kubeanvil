@@ -10,7 +10,7 @@
 # to the host, and verifies every download against a SHA-256 checksum.
 set -euo pipefail
 
-KUBEANVIL_VERSION=${KUBEANVIL_VERSION:-v0.1.0}
+KUBEANVIL_VERSION=${KUBEANVIL_VERSION:-v1.0.0}
 REPO=liosmarf/kubeanvil
 
 # Tools for the bastion, pinned with their published checksums (linux/amd64).
