@@ -1,5 +1,7 @@
 # kubeanvil
 
+[![CI](https://github.com/liosmarf/kubeanvil/actions/workflows/ci.yml/badge.svg)](https://github.com/liosmarf/kubeanvil/actions/workflows/ci.yml)
+
 Build a highly available Kubernetes cluster on Proxmox VE and bootstrap it with GitOps, from
 one configuration file. An interactive installer asks the questions; Terraform, Ansible and
 Argo CD do the work.
@@ -48,11 +50,21 @@ domain. See [`examples/cluster.yaml`](examples/cluster.yaml) and
 inside the root Application, so nothing about your network is committed to Git
 ([ADR 0007](docs/adr/0007-cluster-values-in-the-root-application.md)).
 
-The planned entry point is a single command on the Proxmox host, in the spirit of the Proxmox
-VE Community Scripts ([ADR 0005](docs/adr/0005-one-line-installer-and-bastion.md)):
+The entry point is a single command on the Proxmox host, in the spirit of the Proxmox VE
+Community Scripts ([ADR 0005](docs/adr/0005-one-line-installer-and-bastion.md)):
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/liosmarf/kubeanvil/v0.1.0/install.sh)"
+```
+
+It asks before each change: an API user and token with only the privileges Terraform needs,
+then a small Debian container (the bastion) with kubeanvil, OpenTofu, Ansible, kubectl, helm
+and SOPS, every download checked against a pinned SHA-256. On any other machine it installs
+the binary and a checkout. To read the script first:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/liosmarf/kubeanvil/v0.1.0/install.sh
+less install.sh && bash install.sh
 ```
 
 ## Status
@@ -66,7 +78,9 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/liosmarf/kubeanvil/v0.1.
 | `kubeanvil` CLI ([`cmd/`](cmd/), [`internal/`](internal/)): `validate`, `generate` | ✅ tested (`go test ./...`) |
 | `kubeanvil init` wizard: Proxmox discovery, size presets, component choice, review | ✅ tested against a real Proxmox host and in a pty |
 | `kubeanvil apply` / `destroy`: Terraform → Ansible → Argo CD bootstrap → kubeconfig | ✅ `apply` run end to end and re-run idempotently · 🚧 `destroy` |
-| One-line installer with Proxmox discovery | 🚧 |
+| One-line installer: API token, bastion container, pinned tools ([`install.sh`](install.sh)) | ✅ built, ShellCheck clean · 🚧 run on a host |
+| Bootstrap secrets with SOPS + age (`kubeanvil secrets`) | ✅ tested round trip |
+| CI: Go, pty wizard, OpenTofu, ansible-lint, chart rendering, ShellCheck, gitleaks; Renovate; GoReleaser | ✅ |
 | vSphere and Azure modules ([ADR 0003](docs/adr/0003-provider-node-contract.md)) | planned |
 
 ## Design decisions

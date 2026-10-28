@@ -76,6 +76,13 @@ jobs:
             sudo tar -xz -C /usr/local/bin kubeconform
       - run: scripts/check-gitops.sh
 
+  shell:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck install.sh
+
   secrets:
     name: No secrets in history
     runs-on: ubuntu-latest

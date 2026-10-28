@@ -110,7 +110,8 @@ func (w *wizard) quickStart() error {
 // connect reads the Proxmox host and proposes settings from it. When it cannot be read,
 // the user may retry or type the settings in.
 func (w *wizard) connect() error {
-	target, local := "", onProxmox()
+	// The installer sets KUBEANVIL_PROXMOX_HOST in the bastion, so its host is the proposal.
+	target, local := os.Getenv("KUBEANVIL_PROXMOX_HOST"), onProxmox()
 	w.step++
 	for {
 		if !local {
