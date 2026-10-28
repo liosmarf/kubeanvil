@@ -1,10 +1,10 @@
 # Download the cloud image once per Proxmox node, then create one VM per entry in var.nodes.
 
 resource "proxmox_download_file" "ubuntu" {
-  node_name           = var.proxmox.node
-  datastore_id        = var.proxmox.image_datastore
-  content_type        = "import"
-  url                 = var.image.url
+  node_name    = var.proxmox.node
+  datastore_id = var.proxmox.image_datastore
+  content_type = "import"
+  url          = var.image.url
   # Ubuntu's .img cloud images are qcow2; Proxmox only accepts disk extensions for "import".
   file_name           = "${var.cluster_name}-${replace(basename(var.image.url), "/\\.img$/", ".qcow2")}"
   checksum            = var.image.sha256

@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go tests and wizard smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Tools for the SOPS round trip and the pty test
+        run: sudo apt-get update && sudo apt-get install -y age expect
+      - name: SOPS
+        env:
+          SOPS_VERSION: v3.13.3 # renovate: datasource=github-releases depName=getsops/sops
+        run: |
+          curl -fsSLo /usr/local/bin/sops "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64"
+          chmod +x /usr/local/bin/sops
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go vet ./...
+      - run: go test ./...
+      - name: Wizard in a real terminal
+        run: |
+          go build -o "$RUNNER_TEMP/kubeanvil" ./cmd/kubeanvil
+          cd "$(mktemp -d)" && expect "$GITHUB_WORKSPACE/scripts/wizard-smoke.exp" "$RUNNER_TEMP/kubeanvil"
+
+  terraform:
+    name: OpenTofu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+      - run: tofu fmt -check -recursive terraform
+      - name: Validate
+        working-directory: terraform/envs/proxmox
+        run: tofu init -backend=false -input=false && tofu validate
+
+  ansible:
+    name: Ansible lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ansible
+    env:
+      ANSIBLE_CONFIG: ${{ github.workspace }}/ansible/ansible.cfg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install ansible-core ansible-lint
+      - run: ansible-galaxy collection install -r requirements.yml
+      - run: ansible-lint --profile production
+
+  gitops:
+    name: Platform chart renders and validates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: kubeconform
+        env:
+          KUBECONFORM_VERSION: v0.7.0 # renovate: datasource=github-releases depName=yannh/kubeconform
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" |
+            sudo tar -xz -C /usr/local/bin kubeconform
+      - run: scripts/check-gitops.sh
+
+  secrets:
+    name: No secrets in history
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

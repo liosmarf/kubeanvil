@@ -1,0 +1,22 @@
+# Static kubeanvil binaries for Linux and macOS, with SHA-256 checksums that install.sh verifies.
+version: 2
+
+builds:
+  - main: ./cmd/kubeanvil
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{ .Version }}"]
+
+archives:
+  - name_template: "kubeanvil_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    files: [LICENSE, README.md]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+  sort: asc

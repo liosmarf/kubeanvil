@@ -1,0 +1,47 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "customManagers": [
+    {
+      "description": "Chart versions in the component catalog, marked with # renovate: hints",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^gitops/platform/catalog\\.yaml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)( registryUrl=(?<registryUrl>\\S+))?\\n(?:.*\\n){0,3}?\\s*version: (?<currentValue>\\S+)",
+        "(?:version|revision): (?<currentValue>[^\\s,}]+)[^\\n#]*# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)( registryUrl=(?<registryUrl>\\S+))?"
+      ]
+    },
+    {
+      "description": "Tool versions pinned in the CI workflows",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "_VERSION: (?<currentValue>\\S+) # renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Kubernetes and platform components: one PR per minor, reviewed by hand",
+      "matchFileNames": [
+        "gitops/**",
+        "ansible/**"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor"
+      ],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
