@@ -31,6 +31,7 @@ jobs:
       - run: go test ./...
       - name: Wizard in a real terminal
         run: |
+          ssh-keygen -q -t ed25519 -N '' -f ~/.ssh/id_ed25519 # as on any admin machine
           go build -o "$RUNNER_TEMP/kubeanvil" ./cmd/kubeanvil
           cd "$(mktemp -d)" && expect "$GITHUB_WORKSPACE/scripts/wizard-smoke.exp" "$RUNNER_TEMP/kubeanvil"
 

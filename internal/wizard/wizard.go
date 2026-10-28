@@ -82,9 +82,15 @@ func (w *wizard) quickStart() error {
 	}
 	c.Spec.DNS.BaseDomain = c.Metadata.Name + "." + c.Spec.Network.SearchDomain
 	if len(c.Spec.Access.SSHPublicKeys) == 0 {
-		if key := sshkey.LocalPublic(); key != "" {
-			c.Spec.Access.SSHPublicKeys = []string{key}
+		key := sshkey.LocalPublic()
+		if key == "" {
+			if err := w.ask(w.input("SSH public key for the nodes",
+				"No ~/.ssh/id_*.pub here. Paste the public key (ssh-ed25519 AAAA…) that will log in as "+c.Spec.Access.AdminUser+".",
+				&key, validPublicKey)); err != nil {
+				return err
+			}
 		}
+		c.Spec.Access.SSHPublicKeys = []string{strings.TrimSpace(key)}
 	}
 	if w.host != nil {
 		w.applyPreset(w.fittingPreset())
@@ -189,7 +195,7 @@ func (w *wizard) review() error {
 		if problems == nil {
 			opts = append(opts, huh.NewOption("Write cluster.yaml", "write"))
 		} else {
-			title, choice = "Some settings need fixing", sections[0].id
+			title, choice = "Some settings need fixing", sectionFor(problems)
 			desc += "\n\n" + problems.Error()
 		}
 		for _, s := range sections {
@@ -216,6 +222,21 @@ func (w *wizard) review() error {
 			}
 		}
 	}
+}
+
+// sectionFor picks the review section that fixes the first problem Validate reported.
+func sectionFor(problems error) string {
+	first, _, _ := strings.Cut(problems.Error(), "\n")
+	for _, s := range []struct{ prefix, id string }{
+		{"access.", "access"}, {"gitops.", "access"}, {"network.", "network"}, {"node ", "network"},
+		{"nodes.", "size"}, {"provider.", "proxmox"}, {"dns.", "domain"}, {"tls.", "domain"},
+		{"backup.", "backup"}, {"storage ", "components"},
+	} {
+		if strings.HasPrefix(first, s.prefix) {
+			return s.id
+		}
+	}
+	return "size"
 }
 
 // ask runs a form with one question per screen.
@@ -756,6 +777,14 @@ var dnsLabel = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$`)
 func validName(s string) error {
 	if !dnsLabel.MatchString(strings.TrimSpace(s)) {
 		return errors.New("use lowercase letters, digits and dashes")
+	}
+	return nil
+}
+
+func validPublicKey(s string) error {
+	f := strings.Fields(s)
+	if len(f) < 2 || !(strings.HasPrefix(f[0], "ssh-") || strings.HasPrefix(f[0], "ecdsa-")) {
+		return errors.New("paste a public key line, e.g. ssh-ed25519 AAAA… you@host")
 	}
 	return nil
 }

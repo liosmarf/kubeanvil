@@ -49,3 +49,11 @@ func TestSummaryWarnsWhenWorkersAreTooSmall(t *testing.T) {
 		t.Error("expected a memory warning: ~8 GiB of platform on 2 × 4 GiB workers")
 	}
 }
+
+func TestReviewOpensTheSectionThatFixesTheProblem(t *testing.T) {
+	cat, _ := catalog.Load()
+	c := newCluster() // no SSH key yet
+	if got := sectionFor(config.Validate(c, cat)); got != "access" {
+		t.Errorf("sectionFor = %s, want access", got)
+	}
+}
