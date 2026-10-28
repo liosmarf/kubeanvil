@@ -1,5 +1,6 @@
 # Your own cluster definition (written by `kubeanvil init`) and everything generated from it
 /cluster.yaml
+/secrets.sops.yaml
 /clusters/
 *.tfvars.json
 # Terraform / OpenTofu

@@ -10,9 +10,12 @@ argocd_platform_path: gitops/platform
 argocd_platform_values: {}
 argocd_cluster_values: ""  # e.g. gitops/clusters/lab/values.yaml
 
-# Only for private repositories, decrypted from secrets.sops.yaml at run time.
-# HTTPS: username + password (a read-only token). SSH: ssh_private_key + ssh_known_hosts.
-argocd_repo_credentials: {}
+# Bootstrap secrets from secrets.sops.yaml, passed by `kubeanvil apply` in KUBEANVIL_SECRETS.
+argocd_bootstrap_secrets: "{{ lookup('ansible.builtin.env', 'KUBEANVIL_SECRETS', default='') | default('{}', true) | from_json }}"
+
+# Only for private repositories. HTTPS: username + password (a read-only token).
+# SSH: ssh_private_key + ssh_known_hosts.
+argocd_repo_credentials: "{{ argocd_bootstrap_secrets.gitops | default({}, true) }}"
 
 # Components installed by K3s during bootstrap and adopted by Argo CD afterwards.
 argocd_handover:

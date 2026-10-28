@@ -6,6 +6,7 @@ package apply
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ import (
 	"github.com/liosmarf/kubeanvil/internal/catalog"
 	"github.com/liosmarf/kubeanvil/internal/config"
 	"github.com/liosmarf/kubeanvil/internal/generate"
+	"github.com/liosmarf/kubeanvil/internal/secrets"
 	"github.com/liosmarf/kubeanvil/internal/sshkey"
 )
 
@@ -31,12 +33,14 @@ type Runner struct {
 	Root    string // kubeanvil checkout: terraform/ and ansible/ live here
 	Cluster *config.Cluster
 	Catalog *catalog.Catalog
-	Yes     bool // answer yes to every confirmation
+	Yes     bool   // answer yes to every confirmation
+	Secrets string // path of secrets.sops.yaml; it may not exist
 	Out     io.Writer
 
 	tf      string   // tofu or terraform
 	env     []string // secrets for Terraform, kept in memory only
 	nodeKey string   // private key that opens the nodes
+	secrets *secrets.Secrets
 }
 
 // Apply creates or updates the cluster. Run again after a failure: finished phases find
@@ -52,6 +56,10 @@ func (r *Runner) Apply() error {
 	}
 	if err := r.preflight(); err != nil {
 		return err
+	}
+	if missing := secrets.Missing(r.Cluster, r.secrets); len(missing) > 0 {
+		return fmt.Errorf("cluster.yaml needs secrets that %s does not hold: %s. Run `kubeanvil secrets`",
+			filepath.Base(r.Secrets), strings.Join(missing, ", "))
 	}
 	key, ok := sshkey.ForAuthorized(r.Cluster.Spec.Access.SSHPublicKeys)
 	if !ok {
@@ -163,7 +171,16 @@ func (r *Runner) preflight() error {
 		return errors.New("run kubeanvil from the root of a kubeanvil checkout (terraform/ and ansible/ are needed)")
 	}
 
+	s, err := secrets.Load(r.Secrets)
+	if err != nil {
+		return err
+	}
+	r.secrets = s
+
 	token := os.Getenv("PROXMOX_VE_API_TOKEN")
+	if token == "" {
+		token = s.ProxmoxAPIToken
+	}
 	if token == "" {
 		err := huh.NewInput().Title("Proxmox API token").
 			Description("user@realm!tokenid=secret. Used for this run only, never written to disk.\n" +
@@ -277,8 +294,14 @@ func (r *Runner) ansible() error {
 	if out, err := galaxy.CombinedOutput(); err != nil {
 		return fmt.Errorf("installing Ansible collections failed:\n%s", out)
 	}
+
+	// Bootstrap secrets reach the argocd role through the environment, never a file.
+	bootstrap, err := json.Marshal(r.secrets)
+	if err != nil {
+		return err
+	}
 	play := exec.Command("ansible-playbook", "-i", filepath.Join(r.Root, inventory), "--private-key", r.nodeKey, "playbooks/site.yml")
-	play.Dir, play.Env = dir, env
+	play.Dir, play.Env = dir, append(env, "KUBEANVIL_SECRETS="+string(bootstrap))
 	return r.run(play)
 }
 

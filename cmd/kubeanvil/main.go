@@ -12,6 +12,7 @@ import (
 	"github.com/liosmarf/kubeanvil/internal/catalog"
 	"github.com/liosmarf/kubeanvil/internal/config"
 	"github.com/liosmarf/kubeanvil/internal/generate"
+	"github.com/liosmarf/kubeanvil/internal/secrets"
 	"github.com/liosmarf/kubeanvil/internal/wizard"
 )
 
@@ -117,7 +118,7 @@ func rootCmd() *cobra.Command {
 		if err != nil {
 			return nil, err
 		}
-		return &apply.Runner{Root: root, Cluster: c, Catalog: cat, Yes: yes, Out: cmd.OutOrStdout()}, nil
+		return &apply.Runner{Root: root, Cluster: c, Catalog: cat, Yes: yes, Secrets: secrets.Path(file), Out: cmd.OutOrStdout()}, nil
 	}
 	declined := func(cmd *cobra.Command, err error) error {
 		if errors.Is(err, apply.ErrDeclined) {
@@ -154,6 +155,7 @@ func rootCmd() *cobra.Command {
 			return declined(cmd, r.Destroy())
 		},
 	}
+	root.AddCommand(secretsCmd(&file))
 	for _, c := range []*cobra.Command{applyCmd, destroyCmd} {
 		c.Flags().BoolVarP(&yes, "yes", "y", false, "do not ask for confirmation")
 		root.AddCommand(c)

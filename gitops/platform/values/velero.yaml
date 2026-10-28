@@ -6,7 +6,7 @@ initContainers:
       - { mountPath: /target, name: plugins }
 credentials:
   useSecret: true
-  existingSecret: velero-s3 # created at bootstrap from secrets.sops.yaml
+  existingSecret: velero-s3 # created at bootstrap from secrets.sops.yaml by ansible/roles/argocd
 configuration:
   backupStorageLocation:
     - name: default

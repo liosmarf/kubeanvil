@@ -21,6 +21,7 @@ any part before `cluster.yaml` is written.
 go run ./cmd/kubeanvil init      # questions → cluster.yaml (add --accessible for plain prompts)
 go run ./cmd/kubeanvil validate  # catches overlapping IPs, etcd quorum, unsupported choices…
 go run ./cmd/kubeanvil generate  # Terraform, Ansible and platform inputs under clusters/<name>/
+go run ./cmd/kubeanvil secrets   # DNS token, backup keys…, encrypted with SOPS + age (only if needed)
 go run ./cmd/kubeanvil apply     # VMs, OS, K3s, Cilium, Argo CD; asks before each phase
 go run ./cmd/kubeanvil destroy   # deletes the VMs (type the cluster name to confirm)
 ```
