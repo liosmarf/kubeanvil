@@ -5,7 +5,8 @@ resource "proxmox_download_file" "ubuntu" {
   datastore_id        = var.proxmox.image_datastore
   content_type        = "import"
   url                 = var.image.url
-  file_name           = "${var.cluster_name}-${basename(var.image.url)}"
+  # Ubuntu's .img cloud images are qcow2; Proxmox only accepts disk extensions for "import".
+  file_name           = "${var.cluster_name}-${replace(basename(var.image.url), "/\\.img$/", ".qcow2")}"
   checksum            = var.image.sha256
   checksum_algorithm  = "sha256"
   overwrite_unmanaged = true

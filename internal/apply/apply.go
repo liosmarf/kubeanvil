@@ -232,7 +232,8 @@ func (r *Runner) checkRepository() error {
 func (r *Runner) terraform(args ...string) *exec.Cmd {
 	cmd := exec.Command(r.tf, append([]string{"-chdir=" + filepath.Join(r.Root, "terraform", "envs", "proxmox")}, args...)...)
 	cmd.Env = append(os.Environ(), r.env...)
-	cmd.Env = append(cmd.Env, "TF_DATA_DIR="+filepath.Join(r.dir(), ".terraform"))
+	// TF_IN_AUTOMATION drops hints like "run tofu apply" that make no sense inside kubeanvil.
+	cmd.Env = append(cmd.Env, "TF_DATA_DIR="+filepath.Join(r.dir(), ".terraform"), "TF_IN_AUTOMATION=1")
 	return cmd
 }
 
