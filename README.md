@@ -4,7 +4,8 @@ Build a highly available Kubernetes cluster on Proxmox VE and bootstrap it with 
 one configuration file. An interactive installer asks the questions; Terraform, Ansible and
 Argo CD do the work.
 
-> **Early development.** Nothing has been deployed end to end yet — see [status](#status).
+> **Early development.** First end-to-end run done on Proxmox VE 9 (3 control planes, 3 workers,
+> every component Synced and Healthy); no release yet — see [status](#status).
 
 ## Try the CLI
 
@@ -58,12 +59,12 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/liosmarf/kubeanvil/v0.1.
 | Part | State |
 |---|---|
 | Proxmox VM module and environment ([`terraform/`](terraform/)) | ✅ validated with Terraform and OpenTofu |
-| Ansible: OS hardening, HA K3s, Cilium, Argo CD bootstrap ([`ansible/`](ansible/)) | ✅ ported; passes ansible-lint (production) · 🚧 end-to-end run |
+| Ansible: OS hardening, HA K3s, Cilium, Argo CD bootstrap ([`ansible/`](ansible/)) | ✅ passes ansible-lint (production); run end to end |
 | [Component catalog](gitops/platform/catalog.yaml): 12 categories, the 2–3 most used options each, pinned versions | ✅ |
 | GitOps platform chart: one Argo CD Application per selected component ([`gitops/`](gitops/)) | ✅ every component renders and validates ([`scripts/check-gitops.sh`](scripts/check-gitops.sh)) |
 | `kubeanvil` CLI ([`cmd/`](cmd/), [`internal/`](internal/)): `validate`, `generate` | ✅ tested (`go test ./...`) |
 | `kubeanvil init` wizard: Proxmox discovery, size presets, component choice, review | ✅ tested against a real Proxmox host and in a pty |
-| `kubeanvil apply` / `destroy`: Terraform → Ansible → Argo CD bootstrap → kubeconfig | ✅ built · 🚧 end-to-end run |
+| `kubeanvil apply` / `destroy`: Terraform → Ansible → Argo CD bootstrap → kubeconfig | ✅ `apply` run end to end and re-run idempotently · 🚧 `destroy` |
 | One-line installer with Proxmox discovery | 🚧 |
 | vSphere and Azure modules ([ADR 0003](docs/adr/0003-provider-node-contract.md)) | planned |
 
