@@ -3,6 +3,7 @@
 /secrets.sops.yaml
 /clusters/
 *.tfvars.json
+!/examples/terraform.tfvars.json
 # Terraform / OpenTofu
 .terraform/
 *.tfstate
