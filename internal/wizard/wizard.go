@@ -114,11 +114,16 @@ func (w *wizard) connect() error {
 	w.step++
 	for {
 		if !local {
-			if err := w.ask(w.input(w.title("Proxmox host"), "Name or IP of the Proxmox node for the VMs, as in `ssh root@<host>`. kubeanvil only reads from it.",
+			if err := w.ask(w.input(w.title("Proxmox host"), "Name or IP of the Proxmox node for the VMs, as in `ssh root@<host>`. kubeanvil only reads from it.\n"+
+				"Other Proxmox hosts on this LAN outside its cluster? Add them after a comma to avoid their VMs' addresses.",
 				&target, nonEmpty)); err != nil {
 				return err
 			}
-			target = strings.TrimSpace(target)
+		}
+		hosts := splitList(target)
+		others := []string{}
+		if len(hosts) > 0 {
+			target, others = hosts[0], hosts[1:]
 		}
 		where := target
 		if local {
@@ -127,7 +132,7 @@ func (w *wizard) connect() error {
 		fmt.Fprintf(os.Stderr, "Reading %s…\n", where)
 		h, err := discover(target)
 		if err == nil {
-			h.propose(w.c)
+			h.propose(w.c, others)
 			w.host = h
 			return nil
 		}
@@ -551,8 +556,12 @@ func (w *wizard) summary() string {
 	} else {
 		fmt.Fprintf(&b, "  %s has %s free; %s remain after this cluster.\n", h.Node, mib(h.freeMiB()), mib(h.freeMiB()-need))
 	}
-	b.WriteString("  Addresses picked from those that neither answer on the LAN nor appear in a VM or container\n" +
-		"  config. Machines outside Proxmox that are switched off cannot be seen: keep the range outside DHCP.")
+	configs := "this Proxmox cluster"
+	if len(h.others) > 0 {
+		configs += " or on " + strings.Join(h.others, ", ")
+	}
+	fmt.Fprintf(&b, "  Addresses picked from those that neither answer on the LAN nor are set on a VM in %s.\n"+
+		"  Switched-off machines elsewhere cannot be seen: keep the range outside DHCP.", configs)
 	for _, n := range h.notes {
 		b.WriteString("\n  ⚠ " + n)
 	}

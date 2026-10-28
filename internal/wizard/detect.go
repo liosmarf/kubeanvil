@@ -37,6 +37,7 @@ printf '{"node":"%s","storage":%s,"network":%s,"dns":%s,"time":%s,"status":%s,"v
 type proxmoxHost struct {
 	user, addr string // SSH target; addr is empty when running on the host itself
 	inUse      map[netip.Addr]bool
+	others     []string // further Proxmox hosts whose VM configs were read for addresses
 	notes      []string // things the user should know or fix, shown in the review
 
 	Node    string
@@ -107,6 +108,10 @@ func (h *proxmoxHost) run(script string) ([]byte, error) {
 	return out, nil
 }
 
+// configIPs prints the static addresses in the VM and container configs of a Proxmox
+// cluster, which covers machines that are switched off.
+const configIPs = `grep -ho 'ip=[0-9.]*' /etc/pve/nodes/*/qemu-server/*.conf /etc/pve/nodes/*/lxc/*.conf 2>/dev/null | cut -d= -f2`
+
 // sweep finds the addresses in use on the subnet: it pings the first 254 from the host, adds
 // every neighbour that answered ARP (machines that drop pings) and the static addresses in
 // the VM and container configs of the Proxmox cluster (machines that are switched off).
@@ -117,8 +122,7 @@ func (h *proxmoxHost) sweep(prefix netip.Prefix) map[netip.Addr]bool {
 		ips = append(ips, ip.String())
 	}
 	script := "for ip in " + strings.Join(ips, " ") + "; do (ping -c1 -W1 $ip >/dev/null 2>&1 && echo $ip) & done; wait\n" +
-		`ip -4 neigh show | awk '$NF != "FAILED" && $NF != "INCOMPLETE" {print $1}'` + "\n" +
-		`grep -ho 'ip=[0-9.]*' /etc/pve/nodes/*/qemu-server/*.conf /etc/pve/nodes/*/lxc/*.conf 2>/dev/null | cut -d= -f2`
+		`ip -4 neigh show | awk '$NF != "FAILED" && $NF != "INCOMPLETE" {print $1}'` + "\n" + configIPs
 	used := map[netip.Addr]bool{}
 	out, err := h.run(script)
 	if err != nil {
@@ -133,8 +137,31 @@ func (h *proxmoxHost) sweep(prefix netip.Prefix) map[netip.Addr]bool {
 	return used
 }
 
-// propose fills the Proxmox and network settings of c from what the host reported.
-func (h *proxmoxHost) propose(c *config.Cluster) {
+// addOthers marks the static addresses of VMs on other Proxmox hosts as taken: a host
+// outside this one's cluster cannot see them, and they come back when those VMs start.
+func (h *proxmoxHost) addOthers(others []string) {
+	for _, target := range others {
+		o := &proxmoxHost{user: h.user, addr: target}
+		if u, a, ok := strings.Cut(target, "@"); ok {
+			o.user, o.addr = u, a
+		}
+		out, err := o.run(configIPs)
+		if err != nil {
+			h.notes = append(h.notes, fmt.Sprintf("Could not read the VM configs on %s: %v", o.addr, err))
+			continue
+		}
+		h.others = append(h.others, o.addr)
+		for _, f := range strings.Fields(string(out)) {
+			if ip, err := netip.ParseAddr(f); err == nil {
+				h.inUse[ip] = true
+			}
+		}
+	}
+}
+
+// propose fills the Proxmox and network settings of c from what the host reported, also
+// avoiding the addresses of VMs on the other hosts.
+func (h *proxmoxHost) propose(c *config.Cluster, others []string) {
 	p, n := c.Spec.Provider.Proxmox, &c.Spec.Network
 	p.Node, p.SSHUser = h.Node, h.user
 	p.Datastores.Disks = h.pickStorage("images", "VM disks", p.Datastores.Disks)
@@ -159,6 +186,7 @@ func (h *proxmoxHost) propose(c *config.Cluster) {
 		}
 		h.inUse = h.sweep(prefix)
 		h.inUse[prefix.Addr()] = true
+		h.addOthers(others)
 	}
 	p.Endpoint = "https://" + addr + ":8006/"
 	p.InsecureTLS = !trustedTLS(addr)
